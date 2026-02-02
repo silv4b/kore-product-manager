@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="max-w-md mx-auto mt-12">
+    <div class="card border-destructive/20 shadow-xl animate-in fade-in zoom-in duration-200">
+        <header class="border-b border-border pb-4">
+            <div class="flex items-center gap-3 text-destructive mb-2">
+                <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+                <h2 class="text-2xl font-bold">Excluir Produto</h2>
+            </div>
+            <p class="text-muted-foreground">Você está prestes a remover permanentemente um item do seu inventário.</p>
+        </header>
+
+        <section class="py-6">
+            <div class="bg-destructive/5 p-4 rounded-lg border border-destructive/10 mb-6">
+                <p class="text-sm font-medium mb-1">Produto selecionado:</p>
+                <p class="text-lg font-bold text-foreground">"{{ product.name }}"</p>
+                {% if product.description %}
+                <p class="text-xs text-muted-foreground mt-1 line-clamp-2">{{ product.description }}</p>
+                {% endif %}
+            </div>
+
+            <p class="text-sm text-muted-foreground leading-relaxed">
+                Esta ação <span class="font-bold text-destructive">não pode ser desfeita</span>. Todos os dados associados a este produto serão apagados imediatamente.
+            </p>
+        </section>
+
+        <footer class="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t border-border">
+            <a href="{% url 'product_list' %}" class="btn btn-ghost border border-border bg-transparent text-foreground hover:bg-muted flex-1 sm:flex-none justify-center font-medium h-11 px-6">
+                Cancelar e Voltar
+            </a>
+            <form method="post" class="flex-1 sm:flex-none">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-ghost bg-destructive text-white hover:bg-destructive/90 w-full justify-center font-bold h-11 px-8">
+                    Confirmar Exclusão
+                </button>
+            </form>
+        </footer>
+    </div>
+</div>
+{% endblock %}

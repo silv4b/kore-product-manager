@@ -83,7 +83,7 @@ def product_delete(request, pk):
         product.delete()
         messages.success(request, f'Produto "{product_name}" removido permanentemente.')
         return redirect('product_list')
-    return redirect('product_list')
+    return render(request, 'products/product_confirm_delete.html', {'product': product})
 
 from django.contrib.auth import logout
 

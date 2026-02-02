@@ -127,12 +127,11 @@
                         <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
                         Editar
                     </a>
-                    <button
-                        onclick="openDeleteModal('{% url 'product_delete' product.pk %}', '{{ product.name|escapejs }}')"
+                    <a href="{% url 'product_delete' product.pk %}"
                         class="btn btn-sm btn-ghost bg-transparent border border-border text-destructive hover:bg-destructive/10 flex-1 font-medium">
                         <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                         Excluir
-                    </button>
+                    </a>
                     {% else %}
                     <button class="btn btn-sm btn-ghost flex-1 opacity-50 cursor-not-allowed" disabled>Somente
                         Visualização</button>
@@ -192,12 +191,11 @@
                                         title="Editar">
                                         <i data-lucide="pencil" class="w-4 h-4"></i>
                                     </a>
-                                    <button
-                                        onclick="openDeleteModal('{% url 'product_delete' product.pk %}', '{{ product.name|escapejs }}')"
+                                    <a href="{% url 'product_delete' product.pk %}"
                                         class="btn btn-icon btn-sm btn-ghost bg-transparent border-none text-destructive hover:bg-destructive/10"
                                         title="Excluir">
                                         <i data-lucide="trash-2" class="w-4 h-4"></i>
-                                    </button>
+                                    </a>
                                     {% else %}
                                     <i data-lucide="lock" class="w-4 h-4 text-muted-foreground"
                                         title="Somente Visualização"></i>
@@ -218,53 +216,9 @@
     </div>
 </div>
 
-<!-- Delete Confirmation Modal -->
-<div id="deleteModal"
-    class="hidden fixed inset-0 z-50 bg-background/80 backdrop-blur-sm items-center justify-center p-4">
-    <div class="card max-w-sm w-full shadow-lg border-destructive/20 animate-in fade-in zoom-in duration-200">
-        <header>
-            <div class="flex items-center gap-2 text-destructive mb-1">
-                <i data-lucide="alert-triangle" class="w-5 h-5"></i>
-                <h2 class="text-xl font-bold">Excluir Produto</h2>
-            </div>
-            <p>Excluir <span id="productNameHighlight" class="font-bold text-foreground"></span>?</p>
-        </header>
-        <section class="py-4">
-            <p class="text-sm text-muted-foreground">Esta ação não pode ser desfeita. Este produto será removido
-                permanentemente do seu inventário.</p>
-        </section>
-        <footer>
-            <div class="flex justify-end gap-3 w-full border-t border-border pt-4">
-                <button onclick="closeDeleteModal()"
-                    class="btn btn-ghost bg-transparent border border-border text-foreground hover:bg-muted font-medium">Cancelar</button>
-                <form id="deleteForm" method="post" action="">
-                    {% csrf_token %}
-                    <button type="submit"
-                        class="btn btn-ghost bg-destructive text-white hover:bg-destructive/90 font-bold px-6">Confirmar
-                        Exclusão</button>
-                </form>
-            </div>
-        </footer>
-    </div>
 </div>
 
 <script>
-    function openDeleteModal(url, name) {
-        const modal = document.getElementById('deleteModal');
-        const form = document.getElementById('deleteForm');
-        const nameHighlight = document.getElementById('productNameHighlight');
 
-        form.action = url;
-        nameHighlight.textContent = `"${name}"`;
-
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-    }
-
-    function closeDeleteModal() {
-        const modal = document.getElementById('deleteModal');
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-    }
 </script>
 {% endblock %}
