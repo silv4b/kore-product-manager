@@ -62,10 +62,10 @@
             </section>
 
             <footer class="flex justify-end gap-3 pt-6 border-t border-border mt-4">
-                <a href="{% url 'product_list' %}" class="btn bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 flex-1 md:flex-none justify-center">
+                <a href="{% url 'product_list' %}" class="btn btn-ghost bg-transparent border border-border text-foreground hover:bg-muted flex-1 md:flex-none justify-center font-medium">
                     Cancelar
                 </a>
-                <button type="submit" class="btn btn-primary flex-1 md:flex-none justify-center">
+                <button type="submit" class="btn btn-ghost bg-primary text-primary-foreground hover:bg-primary/90 flex-1 md:flex-none justify-center font-bold px-8">
                     {% if form.instance.pk %}Atualizar Produto{% else %}Criar Produto{% endif %}
                 </button>
             </footer>

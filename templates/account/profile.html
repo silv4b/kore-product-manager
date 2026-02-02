@@ -10,15 +10,18 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
         <!-- Sidebar Navigation -->
         <div class="flex flex-col gap-1">
-            <a href="#personal-info" class="flex items-center gap-3 px-4 py-2 rounded-lg bg-primary/10 text-primary font-medium">
+            <a href="#personal-info"
+                class="flex items-center gap-3 px-4 py-2 rounded-lg bg-primary/10 text-primary font-medium">
                 <i data-lucide="user" class="w-4 h-4"></i>
                 Informações Pessoais
             </a>
-            <a href="{% url 'account_change_password' %}" class="flex items-center gap-3 px-4 py-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+            <a href="{% url 'account_change_password' %}"
+                class="flex items-center gap-3 px-4 py-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
                 <i data-lucide="key-round" class="w-4 h-4"></i>
                 Segurança e Senha
             </a>
-            <button onclick="openDeleteAccountModal()" class="flex items-center gap-3 px-4 py-2 rounded-lg text-destructive hover:bg-destructive/10 transition-colors mt-4">
+            <button onclick="openDeleteAccountModal()"
+                class="flex items-center gap-3 px-4 py-2 rounded-lg text-destructive hover:bg-destructive/10 transition-colors mt-4">
                 <i data-lucide="user-minus" class="w-4 h-4"></i>
                 Excluir Conta
             </button>
@@ -27,32 +30,45 @@
         <!-- Main Content -->
         <div class="md:col-span-2 flex flex-col gap-8">
             <!-- Personal Info Card -->
-            <div id="personal-info" class="card">
+            <div id="personal-info" class="card bg-card transition-colors">
                 <header>
-                    <h3 class="text-lg font-bold">Personal Information</h3>
-                    <p class="text-sm">Update your username and contact email.</p>
+                    <h3 class="text-lg font-bold flex items-center gap-2">
+                        <i data-lucide="user-cog" class="w-5 h-5 text-primary"></i>
+                        Informações Pessoais
+                    </h3>
                 </header>
 
-                <form method="post" class="py-6 flex flex-col gap-6">
-                    {% csrf_token %}
-                    <div class="field">
-                        <label for="username" class="text-foreground font-medium mb-1.5">Username</label>
-                        <input type="text" name="username" id="username" value="{{ user.username }}" class="input w-full" required>
-                    </div>
+                <section class="py-4">
+                    <form method="post" class="flex flex-col gap-4">
+                        {% csrf_token %}
+                        <p class="text-sm text-muted-foreground">Atualize seu nome de usuário e e-mail de contato.</p>
 
-                    <div class="field">
-                        <label for="email" class="text-foreground font-medium mb-1.5">Email Address</label>
-                        <input type="email" name="email" id="email" value="{{ user.email }}" class="input w-full" required>
-                    </div>
+                        <div class="field">
+                            <label for="username" class="text-foreground font-medium mb-1.5 block">Nome de
+                                Usuário</label>
+                            <input type="text" name="username" id="username" value="{{ user.username }}"
+                                class="input w-full" required>
+                        </div>
 
-                    <div class="flex justify-end pt-4 border-t border-border mt-2">
-                        <button type="submit" class="btn btn-primary">Save Changes</button>
-                    </div>
-                </form>
+                        <div class="field">
+                            <label for="email" class="text-foreground font-medium mb-1.5 block">Endereço de
+                                E-mail</label>
+                            <input type="email" name="email" id="email" value="{{ user.email }}" class="input w-full"
+                                required>
+                        </div>
+
+                        <div class="flex justify-start pt-4 mt-2">
+                            <button type="submit"
+                                class="btn btn-ghost border border-border bg-transparent text-foreground hover:bg-muted font-bold h-10 px-6">
+                                Salvar Alterações
+                            </button>
+                        </div>
+                    </form>
+                </section>
             </div>
 
             <!-- Security Summary Card -->
-            <div class="card bg-muted/30 border-dashed">
+            <div class="card bg-card">
                 <header>
                     <h3 class="text-lg font-bold flex items-center gap-2">
                         <i data-lucide="shield-check" class="w-5 h-5 text-primary"></i>
@@ -60,8 +76,10 @@
                     </h3>
                 </header>
                 <section class="py-4">
-                    <p class="text-sm text-muted-foreground mb-4">Sua conta está ativa. Recomendamos alterar sua senha a cada 90 dias para manter seus produtos seguros.</p>
-                    <a href="{% url 'account_change_password' %}" class="btn bg-white border border-border text-foreground hover:bg-muted inline-flex items-center gap-2">
+                    <p class="text-sm text-muted-foreground mb-4">Sua conta está ativa. Recomendamos alterar sua senha a
+                        cada 90 dias para manter seus produtos seguros.</p>
+                    <a href="{% url 'account_change_password' %}"
+                        class="btn btn-ghost border border-border bg-transparent h-10 px-6 text-foreground hover:bg-muted font-bold inline-flex items-center justify-center">
                         Alterar Senha
                     </a>
                 </section>
@@ -71,7 +89,8 @@
 </div>
 
 <!-- Account Deletion Modal -->
-    <div id="deleteAccountModal" class="hidden fixed inset-0 z-50 bg-background/80 backdrop-blur-sm items-center justify-center p-4">
+<div id="deleteAccountModal"
+    class="hidden fixed inset-0 z-50 bg-background/80 backdrop-blur-sm items-center justify-center p-4">
     <div class="card max-w-sm w-full shadow-lg border-destructive/20 animate-in fade-in zoom-in duration-200">
         <header>
             <div class="flex items-center gap-2 text-destructive mb-1">
@@ -81,11 +100,14 @@
             <p>Tem certeza que deseja excluir sua conta?</p>
         </header>
         <section class="py-4">
-            <p class="text-sm text-muted-foreground">Esta ação é <span class="font-bold text-destructive">permanente</span>. Todos os seus produtos, dados e configurações serão removidos de nossos servidores para sempre.</p>
+            <p class="text-sm text-muted-foreground">Esta ação é <span
+                    class="font-bold text-destructive">permanente</span>. Todos os seus produtos, dados e configurações
+                serão removidos de nossos servidores para sempre.</p>
         </section>
         <footer>
             <div class="flex justify-end gap-3 w-full border-t border-border pt-4">
-                <button onclick="closeDeleteAccountModal()" class="btn bg-white border border-gray-300 text-gray-700 hover:bg-gray-100">Cancelar</button>
+                <button onclick="closeDeleteAccountModal()"
+                    class="btn bg-white border border-gray-300 text-gray-700 hover:bg-gray-100">Cancelar</button>
                 <form method="post" action="{% url 'delete_account' %}">
                     {% csrf_token %}
                     <button type="submit" class="btn btn-destructive">Confirmar Exclusão Permanente</button>

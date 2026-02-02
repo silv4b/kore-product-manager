@@ -11,16 +11,21 @@
 
         <div class="flex items-center gap-2">
             <!-- View Toggle -->
-            <div class="bg-muted p-1 rounded-lg flex gap-1">
-                <button onclick="setViewMode('grid')" id="btn-grid" class="p-2 rounded-md transition-all" title="Ver como grade">
+            <div class="bg-muted/50 p-1 rounded-lg flex gap-1 border border-border h-10 items-center">
+                <button onclick="setViewMode('grid')" id="btn-grid"
+                    class="w-8 h-8 flex items-center justify-center rounded-md transition-all btn-ghost bg-transparent text-foreground p-0"
+                    title="Ver como grade">
                     <i data-lucide="layout-grid" class="w-4 h-4"></i>
                 </button>
-                <button onclick="setViewMode('table')" id="btn-table" class="p-2 rounded-md transition-all" title="Ver como tabela">
+                <button onclick="setViewMode('table')" id="btn-table"
+                    class="w-8 h-8 flex items-center justify-center rounded-md transition-all btn-ghost bg-transparent text-foreground p-0"
+                    title="Ver como tabela">
                     <i data-lucide="list" class="w-4 h-4"></i>
                 </button>
             </div>
             {% if not is_public_view %}
-            <a href="{% url 'product_create' %}" class="btn btn-primary">
+            <a href="{% url 'product_create' %}"
+                class="btn btn-ghost bg-transparent border border-border shadow-none text-foreground hover:bg-muted font-medium h-10 px-4 flex items-center gap-2">
                 <i data-lucide="plus" class="w-4 h-4"></i>
                 Novo Produto
             </a>
@@ -33,8 +38,10 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <div class="field col-span-1 md:col-span-2 lg:col-span-1">
                 <div class="relative">
-                    <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"></i>
-                    <input type="text" name="q" value="{{ q|default:'' }}" placeholder="Buscar nome ou desc..." class="input w-full pl-10">
+                    <i data-lucide="search"
+                        class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"></i>
+                    <input type="text" name="q" value="{{ q|default:'' }}" placeholder="Buscar nome ou desc..."
+                        class="input w-full pl-10">
                 </div>
             </div>
 
@@ -50,25 +57,32 @@
 
             <div class="field lg:col-span-1">
                 <div class="flex items-center gap-2">
-                    <input type="number" name="min_price" value="{{ min_price|default:'' }}" placeholder="Preço Mín" class="input w-full h-9 text-sm">
+                    <input type="number" name="min_price" value="{{ min_price|default:'' }}" placeholder="Preço Mín"
+                        class="input w-full h-9 text-sm">
                     <span class="text-muted-foreground">-</span>
-                    <input type="number" name="max_price" value="{{ max_price|default:'' }}" placeholder="Preço Máx" class="input w-full h-9 text-sm">
+                    <input type="number" name="max_price" value="{{ max_price|default:'' }}" placeholder="Preço Máx"
+                        class="input w-full h-9 text-sm">
                 </div>
             </div>
 
             <div class="field lg:col-span-1">
                 <div class="flex items-center gap-2">
-                    <input type="number" name="min_stock" value="{{ min_stock|default:'' }}" placeholder="Estoque Mín" class="input w-full h-9 text-sm">
+                    <input type="number" name="min_stock" value="{{ min_stock|default:'' }}" placeholder="Estoque Mín"
+                        class="input w-full h-9 text-sm">
                     <span class="text-muted-foreground">-</span>
-                    <input type="number" name="max_stock" value="{{ max_stock|default:'' }}" placeholder="Estoque Máx" class="input w-full h-9 text-sm">
+                    <input type="number" name="max_stock" value="{{ max_stock|default:'' }}" placeholder="Estoque Máx"
+                        class="input w-full h-9 text-sm">
                 </div>
             </div>
 
             <div class="flex gap-2">
-                <button type="submit" class="btn btn-primary flex-1 h-9">
+                <button type="submit"
+                    class="btn btn-ghost border border-border bg-transparent flex-1 h-9 text-foreground hover:bg-muted font-bold">
                     Filtrar
                 </button>
-                <a href="{{ request.path }}" class="btn btn-ghost p-2 h-9" title="Limpar Filtros">
+                <a href="{{ request.path }}"
+                    class="btn btn-ghost border border-border bg-transparent p-2 h-9 text-foreground hover:bg-muted"
+                    title="Limpar Filtros">
                     <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
                 </a>
             </div>
@@ -86,10 +100,12 @@
                         <p class="text-lg font-bold text-primary">R$ {{ product.price }}</p>
                     </div>
                     <div class="flex flex-col items-end gap-2">
-                        <span class="badge {% if product.stock > 0 %}badge-secondary{% else %}badge-destructive{% endif %}">
+                        <span
+                            class="badge {% if product.stock > 0 %}badge-secondary{% else %}badge-destructive{% endif %}">
                             Estoque: {{ product.stock }}
                         </span>
-                        <span class="badge {% if product.is_public %}badge-secondary bg-green-100 text-green-800 border-green-200{% else %}badge-outline text-muted-foreground{% endif %} text-[10px] py-0 h-5 px-2">
+                        <span
+                            class="badge {% if product.is_public %}badge-secondary bg-green-100 text-green-800 border-green-200{% else %}badge-outline text-muted-foreground{% endif %} text-[10px] py-0 h-5 px-2">
                             {% if product.is_public %}Público{% else %}Privado{% endif %}
                         </span>
                     </div>
@@ -106,16 +122,20 @@
             <footer>
                 <div class="flex gap-2 w-full mt-2">
                     {% if product.user == user %}
-                    <a href="{% url 'product_update' product.pk %}" class="btn btn-sm bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 flex-1">
-                        <i data-lucide="pencil" class="w-4 h-4"></i>
+                    <a href="{% url 'product_update' product.pk %}"
+                        class="btn btn-sm btn-ghost bg-transparent border border-border text-foreground hover:bg-muted flex-1 font-medium">
+                        <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
                         Editar
                     </a>
-                    <button onclick="openDeleteModal('{% url 'product_delete' product.pk %}', '{{ product.name|escapejs }}')" class="btn btn-sm btn-destructive flex-1">
-                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    <button
+                        onclick="openDeleteModal('{% url 'product_delete' product.pk %}', '{{ product.name|escapejs }}')"
+                        class="btn btn-sm btn-ghost bg-transparent border border-border text-destructive hover:bg-destructive/10 flex-1 font-medium">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                         Excluir
                     </button>
                     {% else %}
-                    <button class="btn btn-sm btn-ghost flex-1 opacity-50 cursor-not-allowed" disabled>Somente Visualização</button>
+                    <button class="btn btn-sm btn-ghost flex-1 opacity-50 cursor-not-allowed" disabled>Somente
+                        Visualização</button>
                     {% endif %}
                 </div>
             </footer>
@@ -147,14 +167,17 @@
                         <tr class="hover:bg-muted/30 transition-colors">
                             <td class="px-6 py-4">
                                 <div class="font-medium text-foreground">{{ product.name }}</div>
-                                <div class="text-xs text-muted-foreground line-clamp-1 max-w-xs">{{ product.description }}</div>
+                                <div class="text-xs text-muted-foreground line-clamp-1 max-w-xs">
+                                    {{ product.description }}</div>
                             </td>
                             <td class="px-6 py-4 font-medium text-primary">R$ {{ product.price }}</td>
                             <td class="px-6 py-4">
-                                <span class="{% if product.stock == 0 %}text-destructive font-bold{% endif %}">{{ product.stock }}</span>
+                                <span
+                                    class="{% if product.stock == 0 %}text-destructive font-bold{% endif %}">{{ product.stock }}</span>
                             </td>
                             <td class="px-6 py-4">
-                                <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full {% if product.is_public %}bg-green-100 text-green-700{% else %}bg-gray-100 text-gray-600{% endif %}">
+                                <span
+                                    class="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full {% if product.is_public %}bg-green-100 text-green-700{% else %}bg-gray-100 text-gray-600{% endif %}">
                                     {{ product.is_public|yesno:"Público,Privado" }}
                                 </span>
                             </td>
@@ -164,14 +187,20 @@
                             <td class="px-6 py-4 text-right">
                                 <div class="flex justify-end gap-2">
                                     {% if product.user == user %}
-                                    <a href="{% url 'product_update' product.pk %}" class="btn btn-icon btn-sm btn-ghost" title="Editar">
+                                    <a href="{% url 'product_update' product.pk %}"
+                                        class="btn btn-icon btn-sm btn-ghost bg-transparent border-none text-foreground hover:bg-muted"
+                                        title="Editar">
                                         <i data-lucide="pencil" class="w-4 h-4"></i>
                                     </a>
-                                    <button onclick="openDeleteModal('{% url 'product_delete' product.pk %}', '{{ product.name|escapejs }}')" class="btn btn-icon btn-sm btn-ghost text-destructive" title="Excluir">
+                                    <button
+                                        onclick="openDeleteModal('{% url 'product_delete' product.pk %}', '{{ product.name|escapejs }}')"
+                                        class="btn btn-icon btn-sm btn-ghost bg-transparent border-none text-destructive hover:bg-destructive/10"
+                                        title="Excluir">
                                         <i data-lucide="trash-2" class="w-4 h-4"></i>
                                     </button>
                                     {% else %}
-                                    <i data-lucide="lock" class="w-4 h-4 text-muted-foreground" title="Somente Visualização"></i>
+                                    <i data-lucide="lock" class="w-4 h-4 text-muted-foreground"
+                                        title="Somente Visualização"></i>
                                     {% endif %}
                                 </div>
                             </td>
@@ -190,7 +219,8 @@
 </div>
 
 <!-- Delete Confirmation Modal -->
-<div id="deleteModal" class="hidden fixed inset-0 z-50 bg-background/80 backdrop-blur-sm items-center justify-center p-4">
+<div id="deleteModal"
+    class="hidden fixed inset-0 z-50 bg-background/80 backdrop-blur-sm items-center justify-center p-4">
     <div class="card max-w-sm w-full shadow-lg border-destructive/20 animate-in fade-in zoom-in duration-200">
         <header>
             <div class="flex items-center gap-2 text-destructive mb-1">
@@ -200,14 +230,18 @@
             <p>Excluir <span id="productNameHighlight" class="font-bold text-foreground"></span>?</p>
         </header>
         <section class="py-4">
-            <p class="text-sm text-muted-foreground">Esta ação não pode ser desfeita. Este produto será removido permanentemente do seu inventário.</p>
+            <p class="text-sm text-muted-foreground">Esta ação não pode ser desfeita. Este produto será removido
+                permanentemente do seu inventário.</p>
         </section>
         <footer>
             <div class="flex justify-end gap-3 w-full border-t border-border pt-4">
-                <button onclick="closeDeleteModal()" class="btn bg-white border border-gray-300 text-gray-700 hover:bg-gray-100">Cancelar</button>
+                <button onclick="closeDeleteModal()"
+                    class="btn btn-ghost bg-transparent border border-border text-foreground hover:bg-muted font-medium">Cancelar</button>
                 <form id="deleteForm" method="post" action="">
                     {% csrf_token %}
-                    <button type="submit" class="btn btn-destructive">Confirmar Exclusão</button>
+                    <button type="submit"
+                        class="btn btn-ghost bg-destructive text-white hover:bg-destructive/90 font-bold px-6">Confirmar
+                        Exclusão</button>
                 </form>
             </div>
         </footer>
@@ -224,14 +258,14 @@
         if (mode === 'grid') {
             grid.classList.remove('hidden');
             table.classList.add('hidden');
-            btnGrid.classList.add('bg-white', 'shadow-sm', 'text-primary');
-            btnTable.classList.remove('bg-white', 'shadow-sm', 'text-primary');
+            btnGrid.classList.add('bg-background', 'shadow-sm', 'text-foreground');
+            btnTable.classList.remove('bg-background', 'shadow-sm', 'text-foreground');
             btnTable.classList.add('text-muted-foreground');
         } else {
             grid.classList.add('hidden');
             table.classList.remove('hidden');
-            btnTable.classList.add('bg-white', 'shadow-sm', 'text-primary');
-            btnGrid.classList.remove('bg-white', 'shadow-sm', 'text-primary');
+            btnTable.classList.add('bg-background', 'shadow-sm', 'text-foreground');
+            btnGrid.classList.remove('bg-background', 'shadow-sm', 'text-foreground');
             btnGrid.classList.add('text-muted-foreground');
         }
         localStorage.setItem('productViewMode', mode);
