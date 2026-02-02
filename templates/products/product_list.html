@@ -80,7 +80,7 @@
                     class="btn btn-ghost border border-border bg-transparent flex-1 h-9 text-foreground hover:bg-muted font-bold">
                     Filtrar
                 </button>
-                <a href="{{ request.path }}"
+                <a href="{{ request.path }}?clear=1"
                     class="btn btn-ghost border border-border bg-transparent p-2 h-9 text-foreground hover:bg-muted"
                     title="Limpar Filtros">
                     <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
@@ -88,6 +88,39 @@
             </div>
         </div>
     </form>
+
+    {% if not is_public_view and products %}
+    <!-- Stats Row -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="card p-4 flex items-center gap-4 bg-primary/[0.03] border-dashed border-primary/20">
+            <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                <i data-lucide="package" class="w-5 h-5"></i>
+            </div>
+            <div>
+                <p class="text-[10px] font-bold uppercase text-muted-foreground">Total de Produtos</p>
+                <p class="text-xl font-bold text-foreground">{{ stats.total_count }}</p>
+            </div>
+        </div>
+        <div class="card p-4 flex items-center gap-4 bg-secondary/[0.03] border-dashed border-secondary/20">
+            <div class="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary">
+                <i data-lucide="boxes" class="w-5 h-5"></i>
+            </div>
+            <div>
+                <p class="text-[10px] font-bold uppercase text-muted-foreground">Itens em Estoque</p>
+                <p class="text-xl font-bold text-foreground">{{ stats.total_stock }}</p>
+            </div>
+        </div>
+        <div class="card p-4 flex items-center gap-4 bg-muted/50 border-dashed border-border">
+            <div class="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
+                <i data-lucide="dollar-sign" class="w-5 h-5"></i>
+            </div>
+            <div>
+                <p class="text-[10px] font-bold uppercase text-muted-foreground">Valor Total Estimado</p>
+                <p class="text-xl font-bold text-foreground">R$ {{ stats.total_value }}</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Grid View -->
     <div id="view-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 {% if request.session.view_mode == 'table' %}hidden{% endif %}">
