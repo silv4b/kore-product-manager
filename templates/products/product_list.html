@@ -92,31 +92,36 @@
     {% if not is_public_view and products %}
     <!-- Stats Row -->
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div class="card p-4 flex items-center gap-4 bg-primary/[0.03] border-dashed border-primary/20">
-            <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                <i data-lucide="package" class="w-5 h-5"></i>
+        <!-- Total de Produtos -->
+        <div class="card p-6 flex flex-col items-center justify-center text-center gap-3 bg-primary/[0.03] border-dashed border-primary/30">
+            <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-1">
+                <i data-lucide="package" class="w-6 h-6"></i>
             </div>
             <div>
-                <p class="text-[10px] font-bold uppercase text-muted-foreground">Total de Produtos</p>
-                <p class="text-xl font-bold text-foreground">{{ stats.total_count }}</p>
+                <p class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Total de Produtos</p>
+                <p class="text-3xl font-bold text-foreground leading-none">{{ stats.total_count }}</p>
             </div>
         </div>
-        <div class="card p-4 flex items-center gap-4 bg-secondary/[0.03] border-dashed border-secondary/20">
-            <div class="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary">
-                <i data-lucide="boxes" class="w-5 h-5"></i>
+
+        <!-- Itens em Estoque -->
+        <div class="card p-6 flex flex-col items-center justify-center text-center gap-3 bg-primary/[0.03] border-dashed border-primary/30">
+            <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-1">
+                <i data-lucide="boxes" class="w-6 h-6"></i>
             </div>
             <div>
-                <p class="text-[10px] font-bold uppercase text-muted-foreground">Itens em Estoque</p>
-                <p class="text-xl font-bold text-foreground">{{ stats.total_stock }}</p>
+                <p class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Itens em Estoque</p>
+                <p class="text-3xl font-bold text-foreground leading-none">{{ stats.total_stock }}</p>
             </div>
         </div>
-        <div class="card p-4 flex items-center gap-4 bg-muted/50 border-dashed border-border">
-            <div class="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
-                <i data-lucide="dollar-sign" class="w-5 h-5"></i>
+
+        <!-- Valor Total -->
+        <div class="card p-6 flex flex-col items-center justify-center text-center gap-3 bg-primary/[0.03] border-dashed border-primary/30">
+            <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-1">
+                <i data-lucide="dollar-sign" class="w-6 h-6"></i>
             </div>
             <div>
-                <p class="text-[10px] font-bold uppercase text-muted-foreground">Valor Total Estimado</p>
-                <p class="text-xl font-bold text-foreground">R$ {{ stats.total_value }}</p>
+                <p class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Valor Total Estimado</p>
+                <p class="text-3xl font-bold text-foreground leading-none">R$ {{ stats.total_value|floatformat:2 }}</p>
             </div>
         </div>
     </div>
