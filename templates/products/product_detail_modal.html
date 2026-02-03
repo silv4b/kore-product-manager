@@ -1,3 +1,4 @@
+{% load l10n %}
 <div class="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
     onclick="if(event.target === this) closeModal()">
     <div class="card max-w-2xl w-full shadow-2xl border-border animate-in zoom-in duration-300 overflow-hidden">
@@ -17,7 +18,7 @@
                 <div>
                     <label class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Preço de
                         Venda</label>
-                    <p class="text-3xl font-extrabold text-primary">R$ {{ product.price }}</p>
+                    <p class="text-3xl font-extrabold text-primary">R$ {{ product.price|localize }}</p>
                 </div>
 
                 <div>
@@ -42,6 +43,20 @@
                             class="badge {% if product.is_public %}badge-secondary bg-green-100 text-green-800 border-green-200{% else %}badge-outline text-muted-foreground{% endif %}">
                             {% if product.is_public %}Público no Catálogo{% else %}Privado (Somente você){% endif %}
                         </span>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Categorias</label>
+                    <div class="flex flex-wrap gap-1.5 mt-1">
+                        {% for cat in product.categories.all %}
+                        <span class="badge text-[10px] py-0.5 px-2 border-none text-white font-bold"
+                              style="background-color: {{ cat.color }}">
+                            {{ cat.name }}
+                        </span>
+                        {% empty %}
+                        <span class="text-xs text-muted-foreground italic">Nenhuma categoria vinculada.</span>
+                        {% endfor %}
                     </div>
                 </div>
             </div>

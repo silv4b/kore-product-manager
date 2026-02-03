@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="max-w-md mx-auto mt-20">
+    <div class="card border-destructive/20 shadow-lg">
+        <header class="flex flex-col items-center text-center gap-4">
+            <div class="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center text-destructive">
+                <i data-lucide="alert-triangle" class="w-8 h-8"></i>
+            </div>
+            <div>
+                <h2 class="text-2xl font-bold text-foreground">Excluir Categoria?</h2>
+                <p class="text-muted-foreground mt-1">
+                    Você está prestes a excluir a categoria <strong class="text-foreground">"{{ category.name }}"</strong>.
+                </p>
+            </div>
+        </header>
+
+        <section class="mt-6 p-4 bg-muted/30 rounded-lg text-sm">
+            <p class="text-muted-foreground leading-relaxed">
+                Esta ação <strong class="text-foreground">não removerá</strong> os produtos associados,
+                mas eles deixarão de estar vinculados a esta categoria.
+                Esta operação é permanente.
+            </p>
+        </section>
+
+        <form method="post" class="mt-8">
+            {% csrf_token %}
+            <footer class="flex gap-3">
+                <a href="{% url 'category_list' %}"
+                    class="btn btn-ghost bg-transparent border border-border text-foreground hover:bg-muted flex-1 justify-center font-medium">
+                    Cancelar
+                </a>
+                <button type="submit"
+                    class="btn btn-ghost bg-destructive text-destructive-foreground hover:bg-destructive/90 flex-1 justify-center font-bold">
+                    Confirmar Exclusão
+                </button>
+            </footer>
+        </form>
+    </div>
+</div>
+{% endblock %}

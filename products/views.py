@@ -1,19 +1,19 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from .models import Product
-from .forms import ProductForm
+from django.db import models
+from .models import Product, Category
+from .forms import ProductForm, CategoryForm
 from django.contrib import messages
 
 
+# --- Product Views ---
 @login_required
 def product_list(request):
-    # Se o parâmetro 'clear' estiver presente, limpa os filtros da sessão
     if "clear" in request.GET:
         if "filters_dashboard" in request.session:
             del request.session["filters_dashboard"]
         return redirect("product_list")
 
-    # Pega filtros da URL ou da Sessão (Sticky Filters)
     session_filters = request.session.get("filters_dashboard", {})
 
     q = request.GET.get("q") if "q" in request.GET else session_filters.get("q", "")
@@ -42,11 +42,16 @@ def product_list(request):
         if "max_stock" in request.GET
         else session_filters.get("max_stock", "")
     )
+    category_id = (
+        request.GET.get("category")
+        if "category" in request.GET
+        else session_filters.get("category", "")
+    )
 
-    # Salva os estados atuais na sessão para a próxima visita
     request.session["filters_dashboard"] = {
         "q": q,
         "status": status,
+        "category": category_id,
         "min_price": min_price,
         "max_price": max_price,
         "min_stock": min_stock,
@@ -59,6 +64,9 @@ def product_list(request):
         products = products.filter(name__icontains=q) | products.filter(
             description__icontains=q
         )
+    if category_id:
+        products = products.filter(categories=category_id)
+
     if status == "public":
         products = products.filter(is_public=True)
     elif status == "private":
@@ -72,9 +80,8 @@ def product_list(request):
     if max_stock:
         products = products.filter(stock__lte=max_stock)
 
-    products = products.order_by("-created_at")
+    products = products.distinct().order_by("-created_at")
 
-    # Estatísticas básicas para o Dashboard
     stats = {
         "total_count": products.count(),
         "total_stock": sum(p.stock for p in products),
@@ -86,9 +93,11 @@ def product_list(request):
         "products/product_list.html",
         {
             "products": products,
+            "categories": Category.objects.all(),
             "stats": stats,
             "q": q,
             "status": status,
+            "category_id": category_id,
             "min_price": min_price,
             "max_price": max_price,
             "min_stock": min_stock,
@@ -105,6 +114,7 @@ def product_create(request):
             product = form.save(commit=False)
             product.user = request.user
             product.save()
+            form.save_m2m()  # Important for ManyToMany fields
             messages.success(request, f'Produto "{product.name}" criado com sucesso!')
             return redirect("product_list")
     else:
@@ -148,7 +158,6 @@ def product_delete(request, pk):
 @login_required
 def product_detail(request, pk):
     product = get_object_or_404(Product, pk=pk)
-    # Verifica se o produto é público ou se pertence ao usuário
     if not product.is_public and product.user != request.user:
         messages.error(request, "Você não tem permissão para ver este produto.")
         return redirect("product_list")
@@ -156,24 +165,118 @@ def product_detail(request, pk):
     return render(request, "products/product_detail_modal.html", {"product": product})
 
 
-from django.contrib.auth import logout
+# --- Category Views ---
+@login_required
+def category_list(request):
+    if "clear" in request.GET:
+        if "filters_categories" in request.session:
+            del request.session["filters_categories"]
+        return redirect("category_list")
+
+    session_filters = request.session.get("filters_categories", {})
+    q = request.GET.get("q") if "q" in request.GET else session_filters.get("q", "")
+
+    request.session["filters_categories"] = {"q": q}
+
+    categories = Category.objects.all()
+    if q:
+        categories = categories.filter(
+            models.Q(name__icontains=q)
+            | models.Q(description__icontains=q)
+            | models.Q(slug__icontains=q)
+        )
+
+    categories = categories.order_by("name")
+    return render(
+        request, "products/category_list.html", {"categories": categories, "q": q}
+    )
 
 
 @login_required
+def category_create(request):
+    if request.method == "POST":
+        form = CategoryForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Categoria criada com sucesso!")
+            return redirect("category_list")
+    else:
+        form = CategoryForm()
+    return render(
+        request,
+        "products/category_form.html",
+        {"form": form, "title": "Nova Categoria"},
+    )
+
+
+@login_required
+def category_update(request, pk):
+    category = get_object_or_404(Category, pk=pk)
+    if request.method == "POST":
+        form = CategoryForm(request.POST, instance=category)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Categoria atualizada com sucesso!")
+            return redirect("category_list")
+    else:
+        form = CategoryForm(instance=category)
+    return render(
+        request,
+        "products/category_form.html",
+        {"form": form, "title": "Editar Categoria", "category": category},
+    )
+
+
+@login_required
+def category_delete(request, pk):
+    category = get_object_or_404(Category, pk=pk)
+    if request.method == "POST":
+        category.delete()
+        messages.success(request, "Categoria removida com sucesso.")
+        return redirect("category_list")
+    return render(
+        request, "products/category_confirm_delete.html", {"category": category}
+    )
+
+
+@login_required
+def category_duplicate(request, pk):
+    original_category = get_object_or_404(Category, pk=pk)
+    if request.method == "POST":
+        form = CategoryForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Categoria duplicada com sucesso!")
+            return redirect("category_list")
+    else:
+        # Preenche os dados iniciais, mas limpa o slug para forçar um novo ou alteração
+        initial_data = {
+            "name": f"{original_category.name} (Cópia)",
+            "description": original_category.description,
+            "color": original_category.color,
+            "slug": f"{original_category.slug}-copia",
+        }
+        form = CategoryForm(initial=initial_data)
+
+    return render(
+        request,
+        "products/category_form.html",
+        {"form": form, "title": "Duplicar Categoria", "is_duplicate": True},
+    )
+
+
+# --- Account & System Views ---
+@login_required
 def profile_view(request):
     if request.method == "POST":
-        # Update User Email/Username
         username = request.POST.get("username")
         email = request.POST.get("email")
-
         user = request.user
         user.username = username
         user.email = email
         user.save()
-
         messages.success(request, "Perfil atualizado com sucesso!")
         return redirect("profile")
-
     return render(request, "account/profile.html")
 
 
@@ -189,15 +292,16 @@ def delete_account_view(request):
 
 def public_product_list(request):
     products = Product.objects.filter(is_public=True)
-
-    # Search
     q = request.GET.get("q")
     if q:
         products = products.filter(name__icontains=q) | products.filter(
             description__icontains=q
         )
 
-    # Price Filter
+    category_id = request.GET.get("category")
+    if category_id:
+        products = products.filter(categories=category_id)
+
     min_price = request.GET.get("min_price")
     max_price = request.GET.get("max_price")
     if min_price:
@@ -205,7 +309,6 @@ def public_product_list(request):
     if max_price:
         products = products.filter(price__lte=max_price)
 
-    # Stock Filter
     min_stock = request.GET.get("min_stock")
     max_stock = request.GET.get("max_stock")
     if min_stock:
@@ -213,9 +316,8 @@ def public_product_list(request):
     if max_stock:
         products = products.filter(stock__lte=max_stock)
 
-    products = products.order_by("-created_at")
+    products = products.distinct().order_by("-created_at")
 
-    # Estatísticas básicas para o Catálogo
     stats = {
         "total_count": products.count(),
         "total_stock": sum(p.stock for p in products),
@@ -227,10 +329,12 @@ def public_product_list(request):
         "products/product_list.html",
         {
             "products": products,
+            "categories": Category.objects.all(),
             "stats": stats,
             "title": "Catálogo Público",
             "is_public_view": True,
             "q": q,
+            "category_id": request.GET.get("category", ""),
             "min_price": min_price,
             "max_price": max_price,
             "min_stock": min_stock,
@@ -243,13 +347,14 @@ def toggle_theme(request):
     current_theme = request.session.get("theme", "light")
     new_theme = "dark" if current_theme == "light" else "light"
     request.session["theme"] = new_theme
-
     if request.user.is_authenticated:
         profile = request.user.profile
         profile.theme = new_theme
         profile.save()
-
     return redirect(request.META.get("HTTP_REFERER", "/"))
+
+
+from django.contrib.auth import logout
 
 
 @login_required

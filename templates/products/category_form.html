@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="max-w-xl mx-auto mt-10">
+    <div class="card">
+        <header>
+            <h2 class="text-2xl font-bold">{{ title }}</h2>
+            <p>Gerencie os detalhes desta categoria para organização do seu inventário.</p>
+        </header>
+
+        {% if form.errors %}
+        <div class="px-6 pt-2">
+            <div class="alert alert-destructive">
+                <section>
+                    <p>Por favor, corrija os erros abaixo.</p>
+                </section>
+            </div>
+        </div>
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %}
+
+            <section class="flex flex-col gap-6 py-6 px-6">
+                <!-- Nome -->
+                <div class="field">
+                    <label for="id_name" class="text-foreground font-medium mb-1.5">Nome da Categoria</label>
+                    {{ form.name }}
+                    {% if form.name.errors %}<p class="text-destructive text-xs mt-1">{{ form.name.errors.0 }}</p>{% endif %}
+                </div>
+
+                <!-- Slug e Cor -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="field">
+                        <label for="id_slug" class="text-foreground font-medium mb-1.5">Slug (URL)</label>
+                        {{ form.slug }}
+                        <p class="text-[10px] text-muted-foreground mt-1 italic">Ex: eletronicos-e-gadgets</p>
+                        {% if form.slug.errors %}<p class="text-destructive text-xs mt-1">{{ form.slug.errors.0 }}</p>{% endif %}
+                    </div>
+
+                    <div class="field">
+                        <label for="id_color" class="text-foreground font-medium mb-1.5">Cor de Identificação</label>
+                        <div class="flex gap-2 items-center h-10">
+                            {{ form.color }}
+                            <span class="text-xs font-mono font-bold text-muted-foreground" id="color-hex-preview">#3b82f6</span>
+                        </div>
+                        {% if form.color.errors %}<p class="text-destructive text-xs mt-1">{{ form.color.errors.0 }}</p>{% endif %}
+                    </div>
+                </div>
+
+                <!-- Descrição -->
+                <div class="field">
+                    <label for="id_description" class="text-foreground font-medium mb-1.5">Descrição (Opcional)</label>
+                    {{ form.description }}
+                    {% if form.description.errors %}<p class="text-destructive text-xs mt-1">{{ form.description.errors.0 }}</p>{% endif %}
+                </div>
+            </section>
+
+            <footer class="flex justify-end gap-3 pt-6 border-t border-border mt-4 px-6">
+                <a href="{% url 'category_list' %}"
+                    class="btn btn-ghost bg-transparent border border-border text-foreground hover:bg-muted flex-1 md:flex-none justify-center font-medium">
+                    Cancelar
+                </a>
+                <button type="submit"
+                    class="btn btn-primary flex-1 md:flex-none justify-center font-bold px-8">
+                    {{ title }}
+                </button>
+            </footer>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const nameInput = document.getElementById('id_name');
+        const slugInput = document.getElementById('id_slug');
+        const colorInput = document.getElementById('id_color');
+        const hexPreview = document.getElementById('color-hex-preview');
+
+        if (nameInput && slugInput) {
+            nameInput.addEventListener('input', () => {
+                // Apenas gera automaticamente se o campo slug estiver vazio ou se o usuário não o tiver editado manualmente de forma agressiva
+                // Para simplificar e atender ao pedido de "à medida que for digitado", vamos atualizar sempre
+                const slug = nameInput.value
+                    .toLowerCase()
+                    .normalize('NFD') // Remove acentos
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .replace(/[^\w\s-]/g, '')
+                    .replace(/[\s_]+/g, '-')
+                    .replace(/^-+|-+$/g, '');
+                slugInput.value = slug;
+            });
+        }
+
+        if (colorInput && hexPreview) {
+            hexPreview.textContent = colorInput.value;
+            colorInput.addEventListener('input', () => {
+                hexPreview.textContent = colorInput.value;
+            });
+        }
+    });
+</script>
+{% endblock %}

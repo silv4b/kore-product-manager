@@ -62,6 +62,29 @@
                     </div>
                 </div>
 
+                <div class="field">
+                    <label class="text-foreground font-medium mb-1.5 block font-bold">Categorias</label>
+                    <div class="space-y-3 relative">
+                        <!-- Search and Selected Badges Area -->
+                        <div class="card p-3 bg-muted/20 border-dashed min-h-[50px] flex flex-wrap gap-2 items-center" id="category-tags-container">
+                            <!-- Badges will be injected here via JS -->
+                            <input type="text" id="category-search" placeholder="Pesquisar categoria..."
+                                   class="bg-transparent border-none outline-none text-sm flex-1 min-w-[150px] focus:ring-0">
+                        </div>
+
+                        <!-- Search Results Dropdown -->
+                        <div id="category-results" class="hidden card absolute z-20 w-full max-h-48 overflow-y-auto shadow-xl border-border p-1 animate-in fade-in slide-in-from-top-2 duration-200">
+                            <!-- Results injected here -->
+                        </div>
+
+                        <!-- Actual Hidden Native Checkboxes -->
+                        <div class="hidden" id="hidden-categories">
+                            {{ form.categories }}
+                        </div>
+                    </div>
+                    {% if form.categories.errors %}<p class="text-destructive text-xs mt-1">{{ form.categories.errors.0 }}</p>{% endif %}
+                </div>
+
                 <div class="field p-4 bg-muted/30 rounded-lg border border-border transition-colors hover:bg-muted/50">
                     <label for="id_is_public" class="flex items-start gap-3 cursor-pointer select-none">
                         <input type="checkbox" name="is_public" id="id_is_public"
@@ -97,6 +120,7 @@
         const firstInput = document.getElementById('id_name');
         if (firstInput) firstInput.focus();
 
+        // --- Price Formatting ---
         const priceInput = document.getElementById('id_price');
         if (priceInput) {
             const formatPrice = (val) => {
@@ -113,11 +137,87 @@
                 e.target.value = formatPrice(e.target.value);
             });
 
-            // Format on load if there's a value
             if (priceInput.value) {
                 priceInput.value = formatPrice(priceInput.value);
             }
         }
+
+        // --- Multi-Category Selector Logic ---
+        const searchInput = document.getElementById('category-search');
+        const resultsDiv = document.getElementById('category-results');
+        const tagsContainer = document.getElementById('category-tags-container');
+        const hiddenDiv = document.getElementById('hidden-categories');
+        const checkboxes = hiddenDiv.querySelectorAll('input[type="checkbox"]');
+
+        const updateBadges = () => {
+            // Remove existing badges
+            tagsContainer.querySelectorAll('.badge').forEach(b => b.remove());
+
+            checkboxes.forEach(cb => {
+                if (cb.checked) {
+                    const label = cb.parentElement.textContent.trim();
+                    const badge = document.createElement('span');
+                    badge.className = 'badge bg-primary text-primary-foreground flex items-center gap-1.5 py-1 px-2.5 rounded-full text-xs font-bold shadow-sm animate-in zoom-in duration-200';
+                    badge.innerHTML = `
+                        ${label}
+                        <button type="button" class="hover:text-destructive-foreground transition-colors" data-id="${cb.value}">
+                            <i data-lucide="x" class="w-3 h-3"></i>
+                        </button>
+                    `;
+                    tagsContainer.insertBefore(badge, searchInput);
+
+                    badge.querySelector('button').addEventListener('click', (e) => {
+                        cb.checked = false;
+                        updateBadges();
+                    });
+                }
+            });
+            lucide.createIcons();
+        };
+
+        const showResults = (query) => {
+            resultsDiv.innerHTML = '';
+            const filtered = Array.from(checkboxes).filter(cb => {
+                const label = cb.parentElement.textContent.trim().toLowerCase();
+                return label.includes(query.toLowerCase());
+            });
+
+            if (filtered.length > 0 && query.length > 0) {
+                resultsDiv.classList.remove('hidden');
+                filtered.forEach(cb => {
+                    const label = cb.parentElement.textContent.trim();
+                    const item = document.createElement('div');
+                    item.className = `p-2.5 flex justify-between items-center cursor-pointer hover:bg-muted transition-colors rounded-md ${cb.checked ? 'bg-primary/5 text-primary font-bold' : ''}`;
+                    item.innerHTML = `
+                        <span>${label}</span>
+                        ${cb.checked ? '<i data-lucide="check" class="w-4 h-4"></i>' : '<i data-lucide="plus" class="w-4 h-4 opacity-30"></i>'}
+                    `;
+                    item.onclick = () => {
+                        cb.checked = !cb.checked;
+                        updateBadges();
+                        searchInput.value = '';
+                        resultsDiv.classList.add('hidden');
+                    };
+                    resultsDiv.appendChild(item);
+                });
+                lucide.createIcons();
+            } else {
+                resultsDiv.classList.add('hidden');
+            }
+        };
+
+        searchInput.addEventListener('input', (e) => showResults(e.target.value));
+        searchInput.addEventListener('focus', (e) => showResults(e.target.value));
+
+        // Close results on click outside
+        document.addEventListener('click', (e) => {
+            if (!searchInput.contains(e.target) && !resultsDiv.contains(e.target)) {
+                resultsDiv.classList.add('hidden');
+            }
+        });
+
+        // Initialize badges (for edit mode)
+        updateBadges();
     });
 </script>
 {% endblock %}

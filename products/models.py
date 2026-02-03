@@ -4,9 +4,27 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 
+class Category(models.Model):
+    name = models.CharField(max_length=100)
+    slug = models.SlugField(unique=True)
+    description = models.TextField(blank=True)
+    color = models.CharField(max_length=7, default="#3b82f6")  # Hex color para UI
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name_plural = "Categories"
+
+
 class Product(models.Model):
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="products", null=True, blank=True
+    )
+    categories = models.ManyToManyField(
+        Category,
+        related_name="products",
+        blank=True,
     )
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)

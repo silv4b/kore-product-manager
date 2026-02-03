@@ -1,13 +1,13 @@
 <div class="col-span-full py-12 flex flex-col items-center justify-center text-center animate-in fade-in duration-500">
     <div class="w-16 h-16 bg-muted rounded-full flex items-center justify-center text-muted-foreground mb-4">
-        <i data-lucide="package-search" class="w-8 h-8"></i>
+        <i data-lucide="{{ empty_icon|default:'package-search' }}" class="w-8 h-8"></i>
     </div>
-    <h3 class="text-xl font-bold">Nenhum produto encontrado</h3>
+    <h3 class="text-xl font-bold">Nenhum(a) {{ entity_name|default:'produto' }} encontrado(a)</h3>
     <p class="text-muted-foreground max-w-sm mt-2">
-        {% if q or status or min_price or max_price or min_stock or max_stock %}
+        {% if q or status or min_price or max_price or min_stock or max_stock or category_id %}
         Não encontramos resultados para os filtros aplicados. Tente ajustar sua busca.
         {% else %}
-        Você ainda não possui produtos cadastrados. Comece criando seu primeiro item!
+        Você ainda não possui {{ entity_name_plural|default:'produtos' }} cadastrados. Comece criando seu primeiro registro!
         {% endif %}
     </p>
 </div>

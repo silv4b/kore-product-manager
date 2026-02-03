@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load l10n %}
 
 {% block content %}
 <div class="flex flex-col gap-6">
@@ -36,13 +37,61 @@
     <!-- Filter Bar -->
     <form method="get" class="card p-4">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            <div
-                class="field col-span-1 md:col-span-2 {% if is_public_view %}lg:col-span-2{% else %}lg:col-span-1{% endif %}">
+            <div class="field col-span-1 md:col-span-2 lg:col-span-1">
                 <div class="relative">
                     <i data-lucide="search"
                         class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"></i>
                     <input type="text" name="q" value="{{ q|default:'' }}" placeholder="Buscar nome ou desc..."
                         class="input w-full pl-10">
+                </div>
+            </div>
+
+            <div class="field relative" id="category-filter-command">
+                <!-- Hidden Input to store the actual value -->
+                <input type="hidden" name="category" id="hidden-category-id" value="{{ category_id|default:'' }}">
+
+                <!-- Display Area / Search Input -->
+                <div class="relative group cursor-pointer">
+                    <i data-lucide="tag"
+                        class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors"></i>
+                    <input type="text" id="category-filter-search" autocomplete="off" placeholder="Todas as Categorias"
+                        class="input w-full pl-10 cursor-pointer focus:cursor-text"
+                        value="{% for cat in categories %}{% if category_id == cat.id|stringformat:'i' %}{{ cat.name }}{% endif %}{% endfor %}">
+                    <i data-lucide="chevron-down"
+                        class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground transition-transform group-focus-within:rotate-180"></i>
+                </div>
+
+                <!-- Command Menu -->
+                <div id="category-filter-menu"
+                    class="hidden absolute top-full left-0 w-full mt-2 z-50 card shadow-xl border-border p-1 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div class="max-h-60 overflow-y-auto custom-scrollbar" id="category-options-list">
+                        <div
+                            class="p-2 border-b border-border/50 text-[10px] font-bold uppercase text-muted-foreground tracking-widest px-3">
+                            Categorias
+                        </div>
+                        <div class="p-1">
+                            <div class="category-option p-2.5 flex items-center justify-between hover:bg-muted rounded-md cursor-pointer transition-colors text-sm {% if not category_id %}bg-primary/5 text-primary font-bold{% endif %}"
+                                data-id="">
+                                <span>Todas as Categorias</span>
+                                {% if not category_id %}<i data-lucide="check"
+                                    class="w-4 h-4 text-primary"></i>{% endif %}
+                            </div>
+                            {% for cat in categories %}
+                            <div class="category-option p-2.5 flex items-center justify-between hover:bg-muted rounded-md cursor-pointer transition-colors text-sm {% if category_id == cat.id|stringformat:'i' %}bg-primary/5 text-primary font-bold{% endif %}"
+                                data-id="{{ cat.id }}" data-name="{{ cat.name }}">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-2 h-2 rounded-full" style="background-color: {{ cat.color }}"></div>
+                                    <span>{{ cat.name }}</span>
+                                </div>
+                                {% if category_id == cat.id|stringformat:'i' %}<i data-lucide="check"
+                                    class="w-4 h-4 text-primary"></i>{% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div id="no-category-found" class="hidden p-8 text-center text-sm text-muted-foreground">
+                            Nenhuma categoria encontrada.
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -128,7 +177,7 @@
             <div>
                 <p class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Valor Total
                     Estimado</p>
-                <p class="text-3xl font-bold text-foreground leading-none">R$ {{ stats.total_value|floatformat:2 }}</p>
+                <p class="text-3xl font-bold text-foreground leading-none">R$ {{ stats.total_value|localize }}</p>
             </div>
         </div>
     </div>
@@ -139,22 +188,27 @@
         class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 {% if request.session.view_mode == 'table' %}hidden{% endif %}">
         {% for product in products %}
         <div class="card hover:shadow-md transition-shadow cursor-pointer group"
-             hx-get="{% url 'product_detail' product.pk %}"
-             hx-target="#modal-container">
+            hx-get="{% url 'product_detail' product.pk %}" hx-target="#modal-container">
             <header>
                 <div class="flex justify-between items-start w-full">
                     <div>
                         <h2 class="text-xl font-bold">{{ product.name }}</h2>
-                        <p class="text-lg font-bold text-primary">R$ {{ product.price }}</p>
+                        <p class="text-lg font-bold text-primary">R$ {{ product.price|localize }}</p>
                     </div>
                     <div class="flex flex-col items-end gap-2">
                         <span
                             class="badge {% if product.stock > 0 %}badge-secondary{% else %}badge-destructive{% endif %}">
                             Estoque: {{ product.stock }}
                         </span>
+                        {% for cat in product.categories.all %}
+                        <span class="badge text-[10px] py-0 h-5 px-2 border-none text-white"
+                            style="background-color: {{ cat.color }}">
+                            {{ cat.name }}
+                        </span>
+                        {% endfor %}
                         <span
-                            class="badge {% if product.is_public %}badge-secondary bg-green-100 text-green-800 border-green-200{% else %}badge-outline text-muted-foreground{% endif %} text-[10px] py-0 h-5 px-2">
-                            {% if product.is_public %}Público{% else %}Privado{% endif %}
+                            class="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full {% if product.is_public %}bg-green-100 text-green-700{% else %}bg-gray-100 text-gray-600{% endif %}">
+                            {{ product.is_public|yesno:"Público,Privado" }}
                         </span>
                     </div>
                 </div>
@@ -170,15 +224,13 @@
             <footer>
                 <div class="flex gap-2 w-full mt-2">
                     {% if product.user == user %}
-                    <a href="{% url 'product_update' product.pk %}"
-                        onclick="event.stopPropagation()"
-                        class="btn btn-sm btn-ghost bg-transparent border border-border text-foreground hover:bg-muted flex-1 font-medium">
+                    <a href="{% url 'product_update' product.pk %}" onclick="event.stopPropagation()"
+                        class="btn btn-sm btn-ghost bg-transparent border border-border text-foreground hover:bg-muted flex-1 font-medium h-9">
                         <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
                         Editar
                     </a>
-                    <a href="{% url 'product_delete' product.pk %}"
-                        onclick="event.stopPropagation()"
-                        class="btn btn-sm btn-ghost bg-transparent border border-border text-destructive hover:bg-destructive/10 flex-1 font-medium">
+                    <a href="{% url 'product_delete' product.pk %}" onclick="event.stopPropagation()"
+                        class="btn btn-sm btn-ghost bg-transparent border border-border text-destructive hover:bg-destructive/10 flex-1 font-medium h-9">
                         <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                         Excluir
                     </a>
@@ -202,6 +254,7 @@
                     <thead class="bg-muted/50 border-b border-border">
                         <tr>
                             <th class="px-6 py-4 font-semibold">Nome</th>
+                            <th class="px-6 py-4 font-semibold">Categoria</th>
                             <th class="px-6 py-4 font-semibold">Preço</th>
                             <th class="px-6 py-4 font-semibold">Estoque</th>
                             <th class="px-6 py-4 font-semibold">Status</th>
@@ -219,7 +272,20 @@
                                 <div class="text-xs text-muted-foreground line-clamp-1 max-w-xs">
                                     {{ product.description }}</div>
                             </td>
-                            <td class="px-6 py-4 font-medium text-primary">R$ {{ product.price }}</td>
+                            <td class="px-6 py-4">
+                                <div class="flex flex-wrap gap-1">
+                                    {% for cat in product.categories.all %}
+                                    <span
+                                        class="badge text-[10px] py-0.5 px-2 border-none text-white font-bold uppercase"
+                                        style="background-color: {{ cat.color }}">
+                                        {{ cat.name }}
+                                    </span>
+                                    {% empty %}
+                                    <span class="text-muted-foreground text-xs italic">Sem cat.</span>
+                                    {% endfor %}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 font-medium text-primary">R$ {{ product.price|localize }}</td>
                             <td class="px-6 py-4">
                                 <span
                                     class="{% if product.stock == 0 %}text-destructive font-bold{% endif %}">{{ product.stock }}</span>
@@ -234,26 +300,26 @@
                             <td class="px-6 py-4 text-muted-foreground">{{ product.user.username }}</td>
                             {% endif %}
                             <td class="px-6 py-4 text-right">
-                                <div class="flex justify-end gap-2">
-                                    <button hx-get="{% url 'product_detail' product.pk %}"
-                                            hx-target="#modal-container"
-                                            class="btn btn-icon btn-sm btn-ghost bg-transparent border-none text-muted-foreground hover:text-primary transition-colors"
-                                            title="Visualizar Detalhes">
+                                <div class="flex justify-end gap-1.5">
+                                    <button hx-get="{% url 'product_detail' product.pk %}" hx-target="#modal-container"
+                                        class="w-8 h-8 flex items-center justify-center bg-background border border-border rounded text-muted-foreground hover:bg-muted transition-all"
+                                        title="Visualizar Detalhes">
                                         <i data-lucide="eye" class="w-4 h-4"></i>
                                     </button>
                                     {% if product.user == user %}
                                     <a href="{% url 'product_update' product.pk %}"
-                                        class="btn btn-icon btn-sm btn-ghost bg-transparent border-none text-foreground hover:bg-muted"
+                                        class="w-8 h-8 flex items-center justify-center bg-background border border-border rounded text-muted-foreground hover:bg-muted transition-all"
                                         title="Editar">
                                         <i data-lucide="pencil" class="w-4 h-4"></i>
                                     </a>
                                     <a href="{% url 'product_delete' product.pk %}"
-                                        class="btn btn-icon btn-sm btn-ghost bg-transparent border-none text-destructive hover:bg-destructive/10"
+                                        class="w-8 h-8 flex items-center justify-center bg-background border border-border rounded text-destructive hover:bg-destructive/10 transition-all"
                                         title="Excluir">
                                         <i data-lucide="trash-2" class="w-4 h-4"></i>
                                     </a>
                                     {% else %}
-                                    <div class="w-8 h-8 flex items-center justify-center text-muted-foreground opacity-60" title="Somente Visualização">
+                                    <div class="w-8 h-8 flex items-center justify-center text-muted-foreground opacity-40 bg-muted/20 rounded border border-border"
+                                        title="Somente Visualização">
                                         <i data-lucide="lock" class="w-4 h-4"></i>
                                     </div>
                                     {% endif %}
@@ -276,6 +342,71 @@
 </div>
 
 <script>
+    // --- Category Filter Command Logic ---
+    const commandContainer = document.getElementById('category-filter-command');
+    if (commandContainer) {
+        const searchInput = document.getElementById('category-filter-search');
+        const menu = document.getElementById('category-filter-menu');
+        const hiddenId = document.getElementById('hidden-category-id');
+        const options = commandContainer.querySelectorAll('.category-option');
+        const noFound = document.getElementById('no-category-found');
+        let currentSelectedName = searchInput.value;
 
+        const openMenu = () => {
+            menu.classList.remove('hidden');
+            searchInput.select();
+        };
+
+        const closeMenu = () => {
+            menu.classList.add('hidden');
+            searchInput.value = currentSelectedName;
+        };
+
+        searchInput.addEventListener('focus', openMenu);
+
+        document.addEventListener('click', (e) => {
+            if (!commandContainer.contains(e.target)) closeMenu();
+        });
+
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const firstVisible = Array.from(options).find(opt => !opt.classList.contains('hidden'));
+                if (firstVisible) firstVisible.click();
+            }
+            if (e.key === 'Escape') closeMenu();
+        });
+
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase().trim();
+            let hasResults = false;
+
+            options.forEach(opt => {
+                const name = (opt.dataset.name || 'todas as categorias').toLowerCase();
+                if (name.includes(query)) {
+                    opt.classList.remove('hidden');
+                    hasResults = true;
+                } else {
+                    opt.classList.add('hidden');
+                }
+            });
+
+            noFound.classList.toggle('hidden', hasResults);
+        });
+
+        options.forEach(opt => {
+            opt.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const id = opt.dataset.id;
+                const name = opt.dataset.name || 'Todas as Categorias';
+
+                hiddenId.value = id;
+                currentSelectedName = id ? name : '';
+                searchInput.value = currentSelectedName;
+                menu.classList.add('hidden');
+                commandContainer.closest('form').submit();
+            });
+        });
+    }
 </script>
 {% endblock %}

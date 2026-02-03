@@ -1,6 +1,26 @@
 from django import forms
 from decimal import Decimal, InvalidOperation as DecimalException
-from .models import Product
+from .models import Product, Category
+
+
+class CategoryForm(forms.ModelForm):
+    class Meta:
+        model = Category
+        fields = ["name", "slug", "description", "color"]
+        widgets = {
+            "name": forms.TextInput(
+                attrs={"class": "input w-full", "placeholder": "Nome da Categoria"}
+            ),
+            "slug": forms.TextInput(
+                attrs={"class": "input w-full", "placeholder": "slug-da-categoria"}
+            ),
+            "description": forms.Textarea(
+                attrs={"class": "input w-full h-24 py-2", "placeholder": "Descrição"}
+            ),
+            "color": forms.TextInput(
+                attrs={"class": "input w-full h-10", "type": "color"}
+            ),
+        }
 
 
 class ProductForm(forms.ModelForm):
@@ -10,8 +30,11 @@ class ProductForm(forms.ModelForm):
 
     class Meta:
         model = Product
-        fields = ["name", "description", "price", "stock", "is_public"]
+        fields = ["categories", "name", "description", "price", "stock", "is_public"]
         widgets = {
+            "categories": forms.CheckboxSelectMultiple(
+                attrs={"class": "flex flex-wrap gap-4 p-4 card bg-muted/30"}
+            ),
             "name": forms.TextInput(
                 attrs={"class": "input w-full", "placeholder": "Product Name"}
             ),
@@ -28,6 +51,8 @@ class ProductForm(forms.ModelForm):
 
     def clean_price(self):
         price_str = self.cleaned_data.get("price")
+        if not price_str:
+            return Decimal("0.00")
         try:
             # Remove pontos de milhar e troca vírgula por ponto
             price_numeric = price_str.replace(".", "").replace(",", ".")
