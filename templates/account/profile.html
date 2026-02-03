@@ -99,18 +99,42 @@
             </div>
             <p>Tem certeza que deseja excluir sua conta?</p>
         </header>
-        <section class="py-4">
+        <section class="py-4 space-y-4">
             <p class="text-sm text-muted-foreground">Esta ação é <span
                     class="font-bold text-destructive">permanente</span>. Todos os seus produtos, dados e configurações
                 serão removidos de nossos servidores para sempre.</p>
+
+            <div class="space-y-3 pt-2">
+                <p class="text-[11px] font-bold uppercase text-muted-foreground tracking-wider">Confirme suas
+                    credenciais</p>
+
+                <div class="field">
+                    <label for="confirm_username" class="text-xs font-medium mb-1 block">Digite seu usuário: <span
+                            class="font-bold text-foreground">{{ user.username }}</span></label>
+                    <input type="text" id="confirm_username" placeholder="Nome de usuário" class="input w-full text-sm">
+                </div>
+
+                <div class="field">
+                    <label for="confirm_password" class="text-xs font-medium mb-1 block">Digite sua senha</label>
+                    <input type="password" id="confirm_password" placeholder="Sua senha atual"
+                        class="input w-full text-sm">
+                </div>
+            </div>
         </section>
         <footer>
-            <div class="flex justify-end gap-3 w-full border-t border-border pt-4">
-                <button onclick="closeDeleteAccountModal()"
-                    class="btn bg-white border border-gray-300 text-gray-700 hover:bg-gray-100">Cancelar</button>
-                <form method="post" action="{% url 'delete_account' %}">
+            <div class="flex flex-col gap-3 w-full border-t border-border pt-4">
+                <form method="post" action="{% url 'delete_account' %}" id="deleteAccountForm"
+                    class="flex flex-col gap-3">
                     {% csrf_token %}
-                    <button type="submit" class="btn btn-destructive">Exclusão Permanente</button>
+                    <input type="hidden" name="password" id="hidden_confirm_password">
+
+                    <div class="flex justify-end gap-3">
+                        <button type="button" onclick="closeDeleteAccountModal()"
+                            class="btn bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 h-10 px-4">Cancelar</button>
+                        <button type="submit" id="finalDeleteBtn"
+                            class="btn btn-destructive opacity-50 cursor-not-allowed h-10 px-6 font-bold"
+                            disabled>Excluir Definitivamente</button>
+                    </div>
                 </form>
             </div>
         </footer>
@@ -128,6 +152,33 @@
         const modal = document.getElementById('deleteAccountModal');
         modal.classList.add('hidden');
         modal.classList.remove('flex');
+        // Reset inputs
+        document.getElementById('confirm_username').value = '';
+        document.getElementById('confirm_password').value = '';
+        validateDeletion();
     }
+
+    const confirmUsername = document.getElementById('confirm_username');
+    const confirmPassword = document.getElementById('confirm_password');
+    const hiddenPassword = document.getElementById('hidden_confirm_password');
+    const finalDeleteBtn = document.getElementById('finalDeleteBtn');
+    const currentUsername = "{{ user.username }}";
+
+    function validateDeletion() {
+        const isUserCorrect = confirmUsername.value === currentUsername;
+        const isPassFilled = confirmPassword.value.length > 0;
+
+        if (isUserCorrect && isPassFilled) {
+            finalDeleteBtn.disabled = false;
+            finalDeleteBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        } else {
+            finalDeleteBtn.disabled = true;
+            finalDeleteBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+        hiddenPassword.value = confirmPassword.value;
+    }
+
+    confirmUsername.addEventListener('input', validateDeletion);
+    confirmPassword.addEventListener('input', validateDeletion);
 </script>
 {% endblock %}

@@ -283,10 +283,24 @@ def profile_view(request):
 @login_required
 def delete_account_view(request):
     if request.method == "POST":
+        password = request.POST.get("password")
         user = request.user
-        user.delete()
-        messages.success(request, "Sua conta foi excluída permanentemente.")
-        return redirect("account_login")
+
+        # Verify password
+        from django.contrib.auth import authenticate
+
+        authenticated_user = authenticate(username=user.username, password=password)
+
+        if authenticated_user is not None:
+            user.delete()
+            messages.success(request, "Sua conta foi excluída permanentemente.")
+            return redirect("account_login")
+        else:
+            messages.error(
+                request, "Falha na exclusão: A senha informada está incorreta."
+            )
+            return redirect("profile")
+
     return redirect("profile")
 
 
