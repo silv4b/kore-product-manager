@@ -11,6 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="{% static 'css/output.css' %}" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script>
         function closeToast(button) {
             const toast = button.closest('.toast');
@@ -211,6 +212,20 @@
         </div>
     </div>
     {% endif %}
+    <div id="modal-container"></div>
+    <script>
+        document.body.addEventListener('htmx:afterSwap', function(evt) {
+            if (evt.detail.target.id == 'modal-container') {
+                lucide.createIcons();
+            }
+        });
+        function closeModal() {
+            document.getElementById('modal-container').innerHTML = '';
+        }
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+        });
+    </script>
 </body>
 
 </html>

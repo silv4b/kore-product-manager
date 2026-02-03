@@ -145,6 +145,17 @@ def product_delete(request, pk):
     return render(request, "products/product_confirm_delete.html", {"product": product})
 
 
+@login_required
+def product_detail(request, pk):
+    product = get_object_or_404(Product, pk=pk)
+    # Verifica se o produto é público ou se pertence ao usuário
+    if not product.is_public and product.user != request.user:
+        messages.error(request, "Você não tem permissão para ver este produto.")
+        return redirect("product_list")
+
+    return render(request, "products/product_detail_modal.html", {"product": product})
+
+
 from django.contrib.auth import logout
 
 
@@ -204,11 +215,19 @@ def public_product_list(request):
 
     products = products.order_by("-created_at")
 
+    # Estatísticas básicas para o Catálogo
+    stats = {
+        "total_count": products.count(),
+        "total_stock": sum(p.stock for p in products),
+        "total_value": sum(p.price * p.stock for p in products),
+    }
+
     return render(
         request,
         "products/product_list.html",
         {
             "products": products,
+            "stats": stats,
             "title": "Catálogo Público",
             "is_public_view": True,
             "q": q,

@@ -90,7 +90,7 @@
         </div>
     </form>
 
-    {% if not is_public_view and products %}
+    {% if products and stats %}
     <!-- Stats Row -->
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <!-- Total de Produtos -->
@@ -138,7 +138,9 @@
     <div id="view-grid"
         class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 {% if request.session.view_mode == 'table' %}hidden{% endif %}">
         {% for product in products %}
-        <div class="card hover:shadow-md transition-shadow">
+        <div class="card hover:shadow-md transition-shadow cursor-pointer group"
+             hx-get="{% url 'product_detail' product.pk %}"
+             hx-target="#modal-container">
             <header>
                 <div class="flex justify-between items-start w-full">
                     <div>
@@ -169,11 +171,13 @@
                 <div class="flex gap-2 w-full mt-2">
                     {% if product.user == user %}
                     <a href="{% url 'product_update' product.pk %}"
+                        onclick="event.stopPropagation()"
                         class="btn btn-sm btn-ghost bg-transparent border border-border text-foreground hover:bg-muted flex-1 font-medium">
                         <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
                         Editar
                     </a>
                     <a href="{% url 'product_delete' product.pk %}"
+                        onclick="event.stopPropagation()"
                         class="btn btn-sm btn-ghost bg-transparent border border-border text-destructive hover:bg-destructive/10 flex-1 font-medium">
                         <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                         Excluir
@@ -231,6 +235,12 @@
                             {% endif %}
                             <td class="px-6 py-4 text-right">
                                 <div class="flex justify-end gap-2">
+                                    <button hx-get="{% url 'product_detail' product.pk %}"
+                                            hx-target="#modal-container"
+                                            class="btn btn-icon btn-sm btn-ghost bg-transparent border-none text-muted-foreground hover:text-primary transition-colors"
+                                            title="Visualizar Detalhes">
+                                        <i data-lucide="eye" class="w-4 h-4"></i>
+                                    </button>
                                     {% if product.user == user %}
                                     <a href="{% url 'product_update' product.pk %}"
                                         class="btn btn-icon btn-sm btn-ghost bg-transparent border-none text-foreground hover:bg-muted"
@@ -243,8 +253,9 @@
                                         <i data-lucide="trash-2" class="w-4 h-4"></i>
                                     </a>
                                     {% else %}
-                                    <i data-lucide="lock" class="w-4 h-4 text-muted-foreground"
-                                        title="Somente Visualização"></i>
+                                    <div class="w-8 h-8 flex items-center justify-center text-muted-foreground opacity-60" title="Somente Visualização">
+                                        <i data-lucide="lock" class="w-4 h-4"></i>
+                                    </div>
                                     {% endif %}
                                 </div>
                             </td>

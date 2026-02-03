@@ -45,8 +45,8 @@
                         <label for="id_price" class="text-foreground font-medium mb-1.5">Preço (R$)</label>
                         <div class="relative">
                             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
-                            <input type="number" step="0.01" name="price" id="id_price" placeholder="0.00"
-                                value="{{ form.price.value|unlocalize|default:'' }}" class="input w-full pl-10"
+                            <input type="text" name="price" id="id_price" placeholder="0,00"
+                                value="{{ form.price.value|localize|default:'' }}" class="input w-full pl-10"
                                 required>
                         </div>
                         {% if form.price.errors %}<p class="text-destructive text-xs mt-1">{{ form.price.errors.0 }}</p>
@@ -96,6 +96,28 @@
     document.addEventListener('DOMContentLoaded', () => {
         const firstInput = document.getElementById('id_name');
         if (firstInput) firstInput.focus();
+
+        const priceInput = document.getElementById('id_price');
+        if (priceInput) {
+            const formatPrice = (val) => {
+                let value = val.replace(/\D/g, '');
+                if (value === '') return '';
+                value = (value / 100).toFixed(2) + '';
+                value = value.replace(".", ",");
+                value = value.replace(/(\d)(\d{3})(\d{3}),/g, "$1.$2.$3,");
+                value = value.replace(/(\d)(\d{3}),/g, "$1.$2,");
+                return value;
+            };
+
+            priceInput.addEventListener('input', (e) => {
+                e.target.value = formatPrice(e.target.value);
+            });
+
+            // Format on load if there's a value
+            if (priceInput.value) {
+                priceInput.value = formatPrice(priceInput.value);
+            }
+        }
     });
 </script>
 {% endblock %}

@@ -1,0 +1,92 @@
+<div class="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+    onclick="if(event.target === this) closeModal()">
+    <div class="card max-w-2xl w-full shadow-2xl border-border animate-in zoom-in duration-300 overflow-hidden">
+        <header class="flex justify-between items-center p-6 border-b border-border bg-muted/30">
+            <div>
+                <h2 class="text-2xl font-bold tracking-tight text-foreground">{{ product.name }}</h2>
+                <p class="text-sm text-muted-foreground">Detalhes completos do produto</p>
+            </div>
+            <button onclick="closeModal()"
+                class="btn btn-icon btn-ghost bg-transparent border-none text-muted-foreground hover:text-foreground">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+        </header>
+
+        <section class="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="space-y-6">
+                <div>
+                    <label class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Preço de
+                        Venda</label>
+                    <p class="text-3xl font-extrabold text-primary">R$ {{ product.price }}</p>
+                </div>
+
+                <div>
+                    <label class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Estoque
+                        Disponível</label>
+                    <div class="flex items-center gap-2 mt-1">
+                        <span
+                            class="text-2xl font-bold {% if product.stock > 0 %}text-foreground{% else %}text-destructive{% endif %}">
+                            {{ product.stock }} unidades
+                        </span>
+                        {% if product.stock <= 5 and product.stock > 0 %}
+                        <span class="badge badge-warning text-[10px]">Estoque Baixo</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div>
+                    <label
+                        class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Visibilidade</label>
+                    <div class="mt-1">
+                        <span
+                            class="badge {% if product.is_public %}badge-secondary bg-green-100 text-green-800 border-green-200{% else %}badge-outline text-muted-foreground{% endif %}">
+                            {% if product.is_public %}Público no Catálogo{% else %}Privado (Somente você){% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-6">
+                <div>
+                    <label
+                        class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Descrição</label>
+                    <p class="text-sm text-foreground leading-relaxed mt-1">
+                        {{ product.description|default:"Sem descrição adicional para este produto." }}
+                    </p>
+                </div>
+
+                <div class="pt-4 border-t border-border/50">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                            <i data-lucide="user" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold uppercase text-muted-foreground">Proprietário</p>
+                            <p class="text-sm font-medium">{{ product.user.username }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <p class="text-[10px] text-muted-foreground">Criado em: {{ product.created_at|date:"d/m/Y H:i" }}
+                    </p>
+                    <p class="text-[10px] text-muted-foreground">Atualizado em:
+                        {{ product.updated_at|date:"d/m/Y H:i" }}</p>
+                </div>
+            </div>
+        </section>
+
+        <footer class="p-6 bg-muted/30 border-t border-border flex justify-end gap-3">
+            <button onclick="closeModal()"
+                class="btn btn-ghost border border-border bg-transparent text-foreground hover:bg-muted px-6">
+                Fechar
+            </button>
+            {% if product.user == user %}
+            <a href="{% url 'product_update' product.pk %}" class="btn btn-primary px-6">
+                <i data-lucide="pencil" class="w-4 h-4 mr-2"></i>
+                Editar Produto
+            </a>
+            {% endif %}
+        </footer>
+    </div>
+</div>
