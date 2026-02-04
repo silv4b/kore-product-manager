@@ -31,16 +31,30 @@
 
                 {% if user.is_authenticated %}
                 <a href="{% url 'public_product_list' %}"
-                    class="btn btn-ghost btn-sm bg-transparent border-none shadow-none text-foreground hover:bg-muted font-medium">Catálogo</a>
+                    class="btn btn-ghost btn-sm bg-transparent border-none shadow-none text-foreground hover:bg-muted font-medium">
+                    <i data-lucide="clipboard" class="w-4 h-4"></i>
+                    Catálogo
+                </a>
                 <a href="{% url 'product_list' %}"
-                    class="btn btn-ghost btn-sm bg-transparent border-none shadow-none text-foreground hover:bg-muted font-medium">Dashboard</a>
+                    class="btn btn-ghost btn-sm bg-transparent border-none shadow-none text-foreground hover:bg-muted font-medium">
+                    <i data-lucide="circle-gauge" class="w-4 h-4"></i>
+                    Dashboard
+                </a>
                 <a href="{% url 'category_list' %}"
-                    class="btn btn-ghost btn-sm bg-transparent border-none shadow-none text-foreground hover:bg-muted font-medium">Categorias</a>
-                <a href="{% url 'product_create' %}"
+                    class="btn btn-ghost btn-sm bg-transparent border-none shadow-none text-foreground hover:bg-muted font-medium">
+                    <i data-lucide="tag" class="w-4 h-4"></i>
+                    Categorias
+                </a>
+                <a href="{% url 'price_history_overview' %}"
+                    class="btn btn-ghost btn-sm bg-transparent border-none shadow-none text-foreground hover:bg-muted font-medium">
+                    <i data-lucide="history" class="w-4 h-4"></i>
+                    Histórico de Preços
+                </a>
+                {% comment %} <a href="{% url 'product_create' %}"
                     class="btn btn-ghost btn-sm bg-transparent border-none shadow-none text-foreground hover:bg-muted font-medium">
                     <i data-lucide="plus" class="w-4 h-4"></i>
                     Novo Produto
-                </a>
+                </a> {% endcomment %}
 
                 <!-- User Profile -->
                 <a href="{% url 'profile' %}"

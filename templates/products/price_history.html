@@ -161,21 +161,29 @@
                                 {% if entry.price > next_entry.price %}
                                 <span class="inline-flex items-center gap-1 text-green-600 font-semibold text-sm">
                                     <i data-lucide="trending-up" class="w-4 h-4"></i>
-                                    +{{ entry.price|floatformat:2|add:"-"|add:next_entry.price|floatformat:2 }}
+                                    <i data-lucide="plus" class="w-4 h-4"></i>
+                                    {{ entry.price|floatformat:2|add:"-"|add:next_entry.price|floatformat:2 }}
                                 </span>
                                 {% elif entry.price < next_entry.price %}
                                 <span class="inline-flex items-center gap-1 text-destructive font-semibold text-sm">
                                     <i data-lucide="trending-down" class="w-4 h-4"></i>
+                                    <i data-lucide="minus" class="w-4 h-4"></i>
                                     {{ entry.price|floatformat:2|add:"-"|add:next_entry.price|floatformat:2 }}
                                 </span>
                                 {% else %}
-                                <span class="text-muted-foreground text-sm">—</span>
+                                {% comment %} <span class="text-muted-foreground text-sm">—</span> {% endcomment %}
+                                <span class="inline-flex items-center gap-1 text-gray-500 font-semibold text-sm">
+                                    <i data-lucide="circle-alert" class="w-4 h-4"></i>
+                                </span>
                                 {% endif %}
                                 {% endif %}
                                 {% endwith %}
                                 {% else %}
-                                <span class="text-muted-foreground text-sm italic">Inicial</span>
-                                {% endif %}
+                                {% comment %} <span class="text-muted-foreground text-sm italic"> {% endcomment %}
+                                    <span class="inline-flex items-center gap-1 text-gray-500 font-semibold text-sm">
+                                        <i data-lucide="circle-alert" class="w-4 h-4"></i>
+                                    </span>
+                                    {% endif %}
                             </td>
                         </tr>
                         {% endfor %}
@@ -192,7 +200,8 @@
 
         <footer>
             <div class="flex justify-end gap-3">
-                <a href="{% url 'product_list' %}"
+                {% comment %} <a href="{% url 'product_list' %}" {% endcomment %}
+                <a onclick="history.back()""
                     class="btn btn-ghost border border-border bg-transparent text-foreground hover:bg-muted">
                     Voltar
                 </a>

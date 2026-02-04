@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
-
 {% block content %}
+
 <div class="flex flex-col gap-6">
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
@@ -23,7 +23,8 @@
                 </a>
             </div>
 
-            <a href="{% url 'category_create' %}" class="btn btn-ghost bg-transparent border border-border shadow-none text-foreground hover:bg-muted font-medium h-10 px-4 flex items-center gap-2">
+            <a href="{% url 'category_create' %}"
+                class="btn btn-ghost bg-transparent border border-border shadow-none text-foreground hover:bg-muted font-medium h-10 px-4 flex items-center gap-2">
                 <i data-lucide="plus" class="w-4 h-4"></i>
                 Nova Categoria
             </a>
@@ -37,8 +38,8 @@
                 <div class="relative">
                     <i data-lucide="search"
                         class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"></i>
-                    <input type="text" name="q" value="{{ q|default:'' }}" placeholder="Buscar categoria por nome ou descrição..."
-                        class="input w-full pl-10">
+                    <input type="text" name="q" value="{{ q|default:'' }}"
+                        placeholder="Buscar categoria por nome ou descrição..." class="input w-full pl-10">
                 </div>
             </div>
             <div class="flex gap-2">
@@ -56,13 +57,14 @@
     </form>
 
     <!-- Grid View -->
-    <div id="view-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 {% if request.session.view_mode == 'table' %}hidden{% endif %}">
+    <div id="view-grid"
+        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 {% if request.session.view_mode == 'table' %}hidden{% endif %}">
         {% for category in categories %}
         <div class="card h-full flex flex-col justify-between">
             <header class="flex justify-between items-start gap-4">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold"
-                         style="background-color: {{ category.color }}">
+                        style="background-color: {{ category.color }}">
                         {{ category.name|first|upper }}
                     </div>
                     <div>
@@ -72,18 +74,18 @@
                 </div>
                 <div class="flex gap-2">
                     <a href="{% url 'category_duplicate' category.pk %}"
-                       class="btn btn-icon btn-sm btn-ghost bg-transparent border border-border text-muted-foreground hover:bg-muted"
-                       title="Duplicar">
+                        class="btn btn-icon btn-sm btn-ghost bg-transparent border border-border text-muted-foreground hover:bg-muted"
+                        title="Duplicar">
                         <i data-lucide="copy" class="w-4 h-4"></i>
                     </a>
                     <a href="{% url 'category_update' category.pk %}"
-                       class="btn btn-icon btn-sm btn-ghost bg-transparent border border-border text-muted-foreground hover:bg-muted"
-                       title="Editar">
+                        class="btn btn-icon btn-sm btn-ghost bg-transparent border border-border text-muted-foreground hover:bg-muted"
+                        title="Editar">
                         <i data-lucide="pencil" class="w-4 h-4"></i>
                     </a>
                     <a href="{% url 'category_delete' category.pk %}"
-                       class="btn btn-icon btn-sm btn-ghost bg-transparent border border-border text-destructive hover:bg-destructive/10"
-                       title="Excluir">
+                        class="btn btn-icon btn-sm btn-ghost bg-transparent border border-border text-destructive hover:bg-destructive/10"
+                        title="Excluir">
                         <i data-lucide="trash-2" class="w-4 h-4"></i>
                     </a>
                 </div>
@@ -97,12 +99,13 @@
                 <span class="text-xs font-medium text-muted-foreground uppercase tracking-wider">Cor HEX</span>
                 <div class="flex items-center gap-2">
                     <span class="text-xs font-mono font-bold">{{ category.color }}</span>
-                    <div class="w-4 h-4 rounded-full border border-border" style="background-color: {{ category.color }}"></div>
+                    <div class="w-4 h-4 rounded-full border border-border"
+                        style="background-color: {{ category.color }}"></div>
                 </div>
             </footer>
         </div>
         {% empty %}
-            {% include "products/empty_state.html" with entity_name="categoria" entity_name_plural="categorias" empty_icon="tag" %}
+        {% include "products/empty_state.html" with entity_name="categoria" entity_name_plural="categorias" empty_icon="tag" %}
         {% endfor %}
     </div>
 
@@ -125,19 +128,21 @@
                             <td class="px-6 py-4">
                                 <div class="flex items-center gap-3">
                                     <div class="w-8 h-8 rounded flex items-center justify-center text-white font-bold text-xs"
-                                         style="background-color: {{ category.color }}">
+                                        style="background-color: {{ category.color }}">
                                         {{ category.name|first|upper }}
                                     </div>
                                     <div>
                                         <div class="font-bold text-foreground text-base">{{ category.name }}</div>
-                                        <div class="text-xs text-muted-foreground line-clamp-1 max-w-xs">{{ category.description }}</div>
+                                        <div class="text-xs text-muted-foreground line-clamp-1 max-w-xs">
+                                            {{ category.description }}</div>
                                     </div>
                                 </div>
                             </td>
                             <td class="px-6 py-4 font-mono text-xs">{{ category.slug }}</td>
                             <td class="px-6 py-4">
                                 <div class="flex items-center gap-2">
-                                    <div class="w-4 h-4 rounded-full border border-border" style="background-color: {{ category.color }}"></div>
+                                    <div class="w-4 h-4 rounded-full border border-border"
+                                        style="background-color: {{ category.color }}"></div>
                                     <span class="font-mono">{{ category.color }}</span>
                                 </div>
                             </td>

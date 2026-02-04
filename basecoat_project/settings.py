@@ -37,6 +37,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django_browser_reload",  # Django Browser Reload: https://github.com/adamchainz/django-browser-reload
+    "django_watchfiles",  # Django Watchfiles: https://github.com/adamchainz/django-watchfiles
     "products",
     "allauth",
     "allauth.account",
@@ -51,6 +53,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "allauth.account.middleware.AccountMiddleware",
+    "django_browser_reload.middleware.BrowserReloadMiddleware",
 ]
 
 ROOT_URLCONF = "basecoat_project.urls"
