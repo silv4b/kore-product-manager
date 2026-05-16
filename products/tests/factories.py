@@ -1,8 +1,10 @@
 import random
 import string
 from decimal import Decimal
+
 from django.contrib.auth.models import User
-from products.models import Category, Product, PriceHistory, Profile
+
+from products.models import Category, PriceHistory, Product, Profile
 
 
 def get_random_string(length=10):

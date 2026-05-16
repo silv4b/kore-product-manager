@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import Product, Category, PriceHistory
+
+from .models import Category, PriceHistory, Product
 
 
 @admin.register(Product)

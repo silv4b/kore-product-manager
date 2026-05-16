@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="flex flex-col gap-8">
+    <div>
+        <h2 class="text-3xl font-bold tracking-tight">Parceiros de Negócio</h2>
+        <p class="text-muted-foreground">Gerencie seus contatos de clientes e fornecedores em um só lugar.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Clientes Card -->
+        <div class="card p-6 flex flex-col gap-4 border-l-4 border-l-primary">
+            <div class="flex justify-between items-start">
+                <div class="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                    <i data-lucide="users" class="w-6 h-6"></i>
+                </div>
+                <span class="text-2xl font-bold">{{ customers.count }}</span>
+            </div>
+            <div>
+                <h3 class="text-lg font-bold">Clientes</h3>
+                <p class="text-sm text-muted-foreground">
+                    Pessoas e empresas que compram seus produtos.
+                </p>
+            </div>
+            <div class="mt-2 flex gap-2">
+                <a href="{% url 'customer_list' %}" class="btn btn-ghost border border-border flex-1">Ver Todos</a>
+                <a href="{% url 'customer_create' %}" class="btn btn-primary">Novo</a>
+            </div>
+        </div>
+
+        <!-- Fornecedores Card -->
+        <div class="card p-6 flex flex-col gap-4 border-l-4 border-l-secondary">
+            <div class="flex justify-between items-start">
+                <div class="w-12 h-12 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary">
+                    <i data-lucide="truck" class="w-6 h-6"></i>
+                </div>
+                <span class="text-2xl font-bold">{{ suppliers.count }}</span>
+            </div>
+            <div>
+                <h3 class="text-lg font-bold">Fornecedores</h3>
+                <p class="text-sm text-muted-foreground">Empresas que fornecem produtos para seu estoque.</p>
+            </div>
+            <div class="mt-2 flex gap-2">
+                <a href="{% url 'supplier_list' %}" class="btn btn-ghost border border-border flex-1">Ver Todos</a>
+                <a href="{% url 'supplier_create' %}" class="btn btn-secondary">Novo</a>
+            </div>
+        </div>
+    </div>
+
+    {% if not customers and not suppliers %}
+    <div class="card p-12 text-center border-dashed">
+        <div class="max-w-md mx-auto">
+            <i data-lucide="contact-2" class="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-20"></i>
+            <h3 class="text-xl font-bold mb-2">Comece a cadastrar seus parceiros</h3>
+            <p class="text-muted-foreground mb-6">Cadastre quem compra e quem vende para você para ter um controle
+                completo do seu negócio.</p>
+            <div class="flex justify-center gap-4">
+                <a href="{% url 'customer_create' %}" class="btn btn-primary">Cadastrar Cliente</a>
+                <a href="{% url 'supplier_create' %}" class="btn btn-secondary">Cadastrar Fornecedor</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

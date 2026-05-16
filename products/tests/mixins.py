@@ -2,8 +2,8 @@
 Mixin para simplificar testes que precisam de autenticação
 """
 
-from django.test import TestCase, Client
-from django.contrib.auth import get_user_model
+from django.test import Client, TestCase
+
 from products.tests.factories import UserFactory
 
 

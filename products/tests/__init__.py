@@ -9,9 +9,21 @@ Run tests with:
 """
 
 # Import all test modules for test discovery
-from . import test_models
-from . import test_forms
-from . import test_views
-from . import test_integration
-from . import factories
-from . import test_utils
+from . import (
+    factories as factories,
+)
+from . import (
+    test_forms as test_forms,
+)
+from . import (
+    test_integration as test_integration,
+)
+from . import (
+    test_models as test_models,
+)
+from . import (
+    test_utils as test_utils,
+)
+from . import (
+    test_views as test_views,
+)

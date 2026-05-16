@@ -1,12 +1,13 @@
-from decimal import Decimal
-from django.http import HttpResponse
-from django.test import TestCase, Client
-from django.urls import reverse
-from products.models import Product, Category
-from products.tests.factories import UserFactory, CategoryFactory, ProductFactory
-from products.tests.test_utils import BaseTestCase
-from django.utils import timezone
 from datetime import timedelta
+from decimal import Decimal
+
+from django.test import Client
+from django.urls import reverse
+from django.utils import timezone
+
+from products.models import Category, Product
+from products.tests.factories import CategoryFactory, ProductFactory, UserFactory
+from products.tests.test_utils import BaseTestCase
 
 
 class ProductWorkflowTest(BaseTestCase):
@@ -208,7 +209,7 @@ class ProductWorkflowTest(BaseTestCase):
         )
         public_product.categories.add(category)
 
-        private_product = ProductFactory.create(
+        ProductFactory.create(
             user=other_user,
             name="Private Gadget",
             price=Decimal("200.00"),
@@ -216,7 +217,7 @@ class ProductWorkflowTest(BaseTestCase):
         )
 
         # Create own products
-        own_product = ProductFactory.create(
+        ProductFactory.create(
             user=self.user, name="My Product", price=Decimal("150.00"), is_public=True
         )
 
@@ -532,7 +533,7 @@ class ErrorHandlingWorkflowTest(BaseTestCase):
         self.assertIn("stock", form.errors)
 
         # Teste de criação de categoria inválida (Slug duplicado)
-        category = CategoryFactory.create(slug="test-slug", user=self.user)
+        CategoryFactory.create(slug="test-slug", user=self.user)
 
         response = self.client.post(
             reverse("category_create"),

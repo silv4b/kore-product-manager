@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load l10n %}
+{% load partner_masks %}
+
+{% block content %}
+<div class="flex flex-col gap-6">
+    <div class="flex justify-between items-center">
+        <div>
+            <h2 class="text-3xl font-bold tracking-tight">{{ title }}</h2>
+            <p class="text-muted-foreground">Gerencie seus clientes e seus dados de contato.</p>
+        </div>
+        <a href="{% url 'customer_create' %}" class="btn btn-primary flex items-center gap-2">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            Novo Cliente
+        </a>
+    </div>
+
+    <div class="card overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left">
+                <thead class="bg-muted/50 border-b border-border">
+                    {% with current_sort=request.GET.sort|default:"name" current_dir=request.GET.dir|default:"asc" %}
+                    <tr>
+                        <th class="px-6 py-4 font-semibold">
+                            <a href="?sort=name&dir={% if current_sort == 'name' and current_dir == 'asc' %}desc{% else %}asc{% endif %}"
+                                class="flex items-center gap-1.5 hover:text-primary transition-colors group">
+                                Nome
+                                {% if current_sort == 'name' %}
+                                <i data-lucide="chevron-{% if current_dir == 'asc' %}up{% else %}down{% endif %}"
+                                    class="w-4 h-4 text-primary"></i>
+                                {% else %}
+                                <i data-lucide="arrow-up-down"
+                                    class="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="px-6 py-4 font-semibold">
+                            <a href="?sort=cpf&dir={% if current_sort == 'cpf' and current_dir == 'asc' %}desc{% else %}asc{% endif %}"
+                                class="flex items-center gap-1.5 hover:text-primary transition-colors group">
+                                CPF
+                                {% if current_sort == 'cpf' %}
+                                <i data-lucide="chevron-{% if current_dir == 'asc' %}up{% else %}down{% endif %}"
+                                    class="w-4 h-4 text-primary"></i>
+                                {% else %}
+                                <i data-lucide="arrow-up-down"
+                                    class="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="px-6 py-4 font-semibold">
+                            <a href="?sort=email&dir={% if current_sort == 'email' and current_dir == 'asc' %}desc{% else %}asc{% endif %}"
+                                class="flex items-center gap-1.5 hover:text-primary transition-colors group">
+                                E-mail
+                                {% if current_sort == 'email' %}
+                                <i data-lucide="chevron-{% if current_dir == 'asc' %}up{% else %}down{% endif %}"
+                                    class="w-4 h-4 text-primary"></i>
+                                {% else %}
+                                <i data-lucide="arrow-up-down"
+                                    class="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="px-6 py-4 font-semibold">
+                            <a href="?sort=phone&dir={% if current_sort == 'phone' and current_dir == 'asc' %}desc{% else %}asc{% endif %}"
+                                class="flex items-center gap-1.5 hover:text-primary transition-colors group">
+                                Telefone
+                                {% if current_sort == 'phone' %}
+                                <i data-lucide="chevron-{% if current_dir == 'asc' %}up{% else %}down{% endif %}"
+                                    class="w-4 h-4 text-primary"></i>
+                                {% else %}
+                                <i data-lucide="arrow-up-down"
+                                    class="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="px-6 py-4 font-semibold text-right">Ações</th>
+                    </tr>
+                    {% endwith %}
+                </thead>
+                <tbody class="divide-y divide-border">
+                    {% for customer in customers %}
+                    <tr class="hover:bg-muted/30 transition-colors">
+                        <td class="px-6 py-4 font-medium text-foreground">{{ customer.name }}</td>
+                        <td class="px-6 py-4 text-muted-foreground">{{ customer.cpf|mask_cpf }}</td>
+                        <td class="px-6 py-4 text-muted-foreground">{{ customer.email|default:"-" }}</td>
+                        <td class="px-6 py-4 text-muted-foreground">{{ customer.phone|mask_phone }}</td>
+                        <td class="px-6 py-4 text-right">
+                            <div class="flex justify-end gap-2">
+                                <a href="{% url 'customer_update' customer.pk %}" class="btn btn-sm btn-ghost p-2"
+                                    title="Editar">
+                                    <i data-lucide="pencil" class="w-4 h-4"></i>
+                                </a>
+                                <a href="{% url 'customer_delete' customer.pk %}"
+                                    class="btn btn-sm btn-ghost p-2 text-destructive" title="Excluir">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-12 text-center text-muted-foreground">
+                            <i data-lucide="users" class="w-12 h-12 mx-auto mb-4 opacity-20"></i>
+                            <p>Nenhum cliente cadastrado.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

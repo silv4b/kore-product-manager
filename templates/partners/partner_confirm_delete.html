@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="max-w-md mx-auto py-12">
+    <div class="card border-destructive/20 shadow-xl overflow-hidden">
+        <header class="bg-destructive/5 p-6 border-b border-destructive/10">
+            <div class="flex items-center gap-3 text-destructive">
+                <i data-lucide="alert-triangle" class="w-8 h-8"></i>
+                <h2 class="text-xl font-bold">Confirmar Exclusão</h2>
+            </div>
+        </header>
+
+        <section class="p-6">
+            <p class="text-foreground">Tem certeza que deseja excluir o {{ type }} <strong>"{{ object.name }}"</strong>?
+            </p>
+            <p class="text-sm text-muted-foreground mt-4">Esta ação não pode ser desfeita e todos os dados associados a
+                este contato serão removidos.</p>
+        </section>
+
+        <footer class="p-6 border-t border-border flex flex-col gap-3">
+            <form method="post">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-destructive w-full">Sim, Excluir permanentemente</button>
+            </form>
+            <a href="{% if type == 'cliente' %}{% url 'customer_list' %}{% else %}{% url 'supplier_list' %}{% endif %}"
+                class="btn btn-ghost border border-border w-full text-center">Cancelar e Voltar</a>
+        </footer>
+    </div>
+</div>
+{% endblock %}

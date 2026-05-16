@@ -18,7 +18,7 @@ function initCategoryFilter(containerId) {
         console.warn(`Could not find all required elements for the category filter inside '${containerId}'. Initialization aborted.`);
         return;
     }
-    
+
     let currentSelectedName = searchInput.value;
 
     const openMenu = () => {
@@ -74,7 +74,7 @@ function initCategoryFilter(containerId) {
             hiddenId.value = id;
             currentSelectedName = id ? name : '';
             searchInput.value = currentSelectedName;
-            
+
             closeMenu();
             commandContainer.closest('form').submit();
         });
@@ -90,7 +90,7 @@ function initSparklines() {
     document.querySelectorAll('.sparkline').forEach(svg => {
         try {
             svg.innerHTML = ''; // Clear previous renderings
-            
+
             const data = JSON.parse(svg.dataset.values);
             if (!data || data.length < 2) return;
 
@@ -122,9 +122,91 @@ function initSparklines() {
     });
 }
 
-// --- Initializers ---
+/**
+ * Basic masking utilities for Brazilian formats
+ */
+const Masks = {
+    cpf: (value) => {
+        return value
+            .replace(/\D/g, '')
+            .replace(/(\d{3})(\d)/, '$1.$2')
+            .replace(/(\d{3})(\d)/, '$1.$2')
+            .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+            .replace(/(-\d{2})\d+?$/, '$1');
+    },
+    cnpj: (value) => {
+        return value
+            .replace(/\D/g, '')
+            .replace(/(\d{2})(\d)/, '$1.$2')
+            .replace(/(\d{3})(\d)/, '$1.$3')
+            .replace(/(\d{3})(\d)/, '$1/$2')
+            .replace(/(\d{4})(\d)/, '$1-$2')
+            .replace(/(-\d{2})\d+?$/, '$1');
+    },
+    phone: (value) => {
+        const numbers = value.replace(/\D/g, '');
+        if (numbers.length <= 10) {
+            return numbers
+                .replace(/(\d{2})(\d)/, '($1) $2')
+                .replace(/(\d{4})(\d)/, '$1-$2')
+                .replace(/(-\d{4})\d+?$/, '$1');
+        } else {
+            return numbers
+                .replace(/(\d{2})(\d)/, '($1) $2')
+                .replace(/(\d{5})(\d)/, '$1-$2')
+                .replace(/(-\d{4})\d+?$/, '$1');
+        }
+    },
+    email: (value) => {
+        return value.toLowerCase().replace(/\s/g, '');
+    }
+};
 
-// Run sparkline initialization on initial page load
-document.addEventListener('DOMContentLoaded', initSparklines);
-// Also re-run after HTMX swaps content on the page, to render sparklines in new content
-document.body.addEventListener('htmx:afterSwap', initSparklines);
+/**
+ * Initializes masks for specific inputs
+ */
+function initMasks() {
+    const cpfInput = document.getElementById('id_cpf');
+    const cnpjInput = document.getElementById('id_cnpj');
+    const phoneInput = document.getElementById('id_phone');
+    const emailInput = document.getElementById('id_email');
+
+    if (cpfInput) {
+        cpfInput.addEventListener('input', (e) => {
+            e.target.value = Masks.cpf(e.target.value);
+        });
+        if (cpfInput.value) cpfInput.value = Masks.cpf(cpfInput.value);
+    }
+
+    if (cnpjInput) {
+        cnpjInput.addEventListener('input', (e) => {
+            e.target.value = Masks.cnpj(e.target.value);
+        });
+        if (cnpjInput.value) cnpjInput.value = Masks.cnpj(cnpjInput.value);
+    }
+
+    if (phoneInput) {
+        phoneInput.addEventListener('input', (e) => {
+            e.target.value = Masks.phone(e.target.value);
+        });
+        if (phoneInput.value) phoneInput.value = Masks.phone(phoneInput.value);
+    }
+
+    if (emailInput) {
+        emailInput.addEventListener('input', (e) => {
+            e.target.value = Masks.email(e.target.value);
+        });
+    }
+}
+
+// Run initializations on initial page load
+document.addEventListener('DOMContentLoaded', () => {
+    initSparklines();
+    initMasks();
+});
+
+// Also re-run after HTMX swaps
+document.body.addEventListener('htmx:afterSwap', () => {
+    initSparklines();
+    initMasks();
+});

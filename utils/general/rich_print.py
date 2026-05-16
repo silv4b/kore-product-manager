@@ -1,4 +1,5 @@
 from typing import Any
+
 from bs4 import BeautifulSoup as bs
 from django.http import HttpResponse
 from rich.console import Console

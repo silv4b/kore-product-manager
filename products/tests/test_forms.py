@@ -1,9 +1,9 @@
 from decimal import Decimal
+
 from django.test import TestCase
-from django.contrib.auth.models import User
-from products.forms import ProductForm, CategoryForm
-from products.models import Product, Category
-from products.tests.factories import UserFactory, CategoryFactory, ProductFactory
+
+from products.forms import CategoryForm, ProductForm
+from products.tests.factories import CategoryFactory, ProductFactory, UserFactory
 
 
 class ProductFormTest(TestCase):

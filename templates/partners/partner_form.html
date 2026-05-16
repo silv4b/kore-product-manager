@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto mt-10">
+    <div class="card">
+        <header>
+            <div class="flex flex-col gap-1">
+                <a href="{% if type == 'customer' %}{% url 'customer_list' %}{% else %}{% url 'supplier_list' %}{% endif %}"
+                    class="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 mb-1 transition-colors w-fit">
+                    <i data-lucide="arrow-left" class="w-3 h-3"></i>
+                    Voltar para lista
+                </a>
+                <h2 class="text-2xl font-bold tracking-tight">{{ title }}</h2>
+                <p class="text-muted-foreground text-sm">
+                    {% if type == 'customer' %}
+                    Preencha os dados do cliente para manter seu cadastro atualizado.
+                    {% else %}
+                    Preencha os dados do fornecedor para gerenciar seus contatos de suprimentos.
+                    {% endif %}
+                </p>
+            </div>
+        </header>
+
+        {% if form.errors %}
+        <div class="px-6 pt-2">
+            <div class="alert alert-destructive p-3 rounded-md">
+                <section class="flex items-center gap-2">
+                    <i data-lucide="alert-circle" class="w-4 h-4"></i>
+                    <p class="text-sm font-medium">Por favor, corrija os erros abaixo.</p>
+                </section>
+            </div>
+        </div>
+        {% endif %}
+
+        <form method="post" class="mt-2">
+            {% csrf_token %}
+            <section class="p-6 space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {% for field in form %}
+                    <div class="field flex flex-col gap-1.5 {% if field.name == 'address' %}md:col-span-2{% endif %}">
+                        <label for="{{ field.id_for_label }}"
+                            class="text-sm font-semibold text-foreground flex items-center gap-1">
+                            {{ field.label }}
+                            {% if field.field.required %}<span class="text-destructive">*</span>{% endif %}
+                        </label>
+
+                        <div class="relative group">
+                            {% if field.name == 'email' %}
+                            <i data-lucide="mail"
+                                class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors"></i>
+                            {% elif field.name == 'phone' %}
+                            <i data-lucide="phone"
+                                class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors"></i>
+                            {% elif field.name == 'cpf' %}
+                            <i data-lucide="credit-card"
+                                class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors"></i>
+                            {% elif field.name == 'cnpj' %}
+                            <i data-lucide="building-2"
+                                class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors"></i>
+                            {% elif field.name == 'website' %}
+                            <i data-lucide="globe"
+                                class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors"></i>
+                            {% endif %}
+
+                            {% with field_class="input w-full" %}
+                            {% if field.name == 'email' or field.name == 'phone' or field.name == 'cpf' or field.name == 'cnpj' or field.name == 'website' %}
+                            {{ field }}
+                            <!-- O Django já insere a classe 'input' via forms.py, mas precisamos garantir o padding-left se houver ícone -->
+                            <style>
+                                #{{ field.id_for_label }
+                                }
+
+                                    {
+                                    padding-left: 2.5rem;
+                                }
+                            </style>
+                            {% else %}
+                            {{ field }}
+                            {% endif %}
+                            {% endwith %}
+                        </div>
+
+                        {% if field.help_text %}
+                        <p class="text-[10px] text-muted-foreground italic mt-0.5 leading-tight">{{ field.help_text }}
+                        </p>
+                        {% endif %}
+                        {% if field.errors %}
+                        <div class="text-destructive text-xs mt-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                            {{ field.errors.0 }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <footer class="p-6 border-t border-border flex flex-col sm:flex-row justify-end gap-3 bg-muted/20">
+                <a href="{% if type == 'customer' %}{% url 'customer_list' %}{% else %}{% url 'supplier_list' %}{% endif %}"
+                    class="btn btn-ghost border border-border order-2 sm:order-1 flex-1 sm:flex-none justify-center">
+                    Cancelar
+                </a>
+                <button type="submit"
+                    class="btn btn-primary px-8 order-1 sm:order-2 flex-1 sm:flex-none justify-center font-bold">
+                    Salvar {{ type|title }}
+                </button>
+            </footer>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Auto-focus first input
+        const firstInput = document.querySelector('input:not([type="hidden"])');
+        if (firstInput) firstInput.focus();
+    });
+</script>
+{% endblock %}

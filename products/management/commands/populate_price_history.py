@@ -1,5 +1,6 @@
 from django.core.management.base import BaseCommand
-from products.models import Product, PriceHistory
+
+from products.models import PriceHistory, Product
 
 
 class Command(BaseCommand):

@@ -2,11 +2,11 @@
 Exemplo de como os testes ficariam mais simples com force_login
 """
 
-from decimal import Decimal
 from django.test import TestCase
 from django.urls import reverse
-from products.models import Product, Category
-from products.tests.factories import UserFactory, CategoryFactory, ProductFactory
+
+from products.models import Product
+from products.tests.factories import ProductFactory, UserFactory
 
 
 class SimpleProductTest(TestCase):

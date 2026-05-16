@@ -1,13 +1,14 @@
 from decimal import Decimal
+
+from django.db import IntegrityError
 from django.test import TestCase
-from django.contrib.auth.models import User
-from django.db.models.signals import post_save
-from products.models import Category, Product, PriceHistory, Profile
+
+from products.models import Category, PriceHistory, Product, Profile
 from products.tests.factories import (
-    UserFactory,
     CategoryFactory,
-    ProductFactory,
     PriceHistoryFactory,
+    ProductFactory,
+    UserFactory,
 )
 
 
@@ -48,7 +49,7 @@ class CategoryModelTest(TestCase):
         """
         user = UserFactory.create()
         CategoryFactory.create(user=user, slug="test-slug")
-        with self.assertRaises(Exception):  # IntegrityError for unique constraint
+        with self.assertRaises(IntegrityError):
             CategoryFactory.create(user=user, slug="test-slug")
 
     def test_category_duplicate_slug_different_users(self):
@@ -178,9 +179,7 @@ class PriceHistoryModelTest(TestCase):
         Testa a criação de um registro de histórico de preços.
         Verifica que o preço e a data de alteração são salvos corretamente.
         """
-        history = PriceHistoryFactory.create(
-            product=self.product, price=Decimal("150.00")
-        )
+        history = PriceHistoryFactory.create(product=self.product, price=Decimal("150.00"))
 
         self.assertEqual(history.product, self.product)
         self.assertEqual(history.price, Decimal("150.00"))
@@ -191,9 +190,7 @@ class PriceHistoryModelTest(TestCase):
         Testa a representação em string do histórico de preços.
         Verifica o formato esperado da string de representação.
         """
-        history = PriceHistoryFactory.create(
-            product=self.product, price=Decimal("99.99")
-        )
+        history = PriceHistoryFactory.create(product=self.product, price=Decimal("99.99"))
 
         expected = f"{self.product.name} - R$ 99.99 em {history.changed_at.strftime('%d/%m/%Y %H:%M')}"
         self.assertEqual(str(history), expected)
@@ -208,13 +205,9 @@ class PriceHistoryModelTest(TestCase):
         # The product already has one price history entry from creation
         # Create additional history entries with slight delay
         time.sleep(0.01)
-        middle_history = PriceHistoryFactory.create(
-            product=self.product, price=Decimal("50.00")
-        )
+        PriceHistoryFactory.create(product=self.product, price=Decimal("50.00"))
         time.sleep(0.01)
-        new_history = PriceHistoryFactory.create(
-            product=self.product, price=Decimal("75.00")
-        )
+        new_history = PriceHistoryFactory.create(product=self.product, price=Decimal("75.00"))
 
         histories = PriceHistory.objects.all()
         # Should be ordered by changed_at descending (newest first)

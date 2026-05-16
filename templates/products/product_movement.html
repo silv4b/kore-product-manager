@@ -13,12 +13,22 @@
 
             <!-- View Toggle -->
             <div class="bg-muted/50 p-1 rounded-lg flex gap-1 border border-border h-10 items-center">
-                <a href="{% url 'set_view_mode' view_context 'grid' %}"
+                <a href="#"
+                    hx-get="{% url 'set_view_mode' view_context 'grid' %}"
+                    hx-swap="none"
+                    onclick="setViewMode('{{ view_context }}', 'grid')"
+                    data-view-mode="true"
+                    data-mode="grid"
                     class="w-8 h-8 flex items-center justify-center rounded-md transition-all btn-ghost bg-transparent text-foreground p-0 {% if view_mode == 'grid' %}bg-background shadow-sm text-foreground{% else %}text-muted-foreground{% endif %}"
                     title="Ver como grade">
                     <i data-lucide="layout-grid" class="w-4 h-4"></i>
                 </a>
-                <a href="{% url 'set_view_mode' view_context 'table' %}"
+                <a href="#"
+                    hx-get="{% url 'set_view_mode' view_context 'table' %}"
+                    hx-swap="none"
+                    onclick="setViewMode('{{ view_context }}', 'table')"
+                    data-view-mode="true"
+                    data-mode="table"
                     class="w-8 h-8 flex items-center justify-center rounded-md transition-all btn-ghost bg-transparent text-foreground p-0 {% if view_mode == 'table' %}bg-background shadow-sm text-foreground{% else %}text-muted-foreground{% endif %}"
                     title="Ver como tabela">
                     <i data-lucide="list" class="w-4 h-4"></i>

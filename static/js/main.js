@@ -63,9 +63,16 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
-// Add HTMX integration for re-initializing icons after AJAX content swaps
-document.body.addEventListener('htmx:afterSwap', function (evt) {
-    // When a modal or other dynamic content is loaded, re-run lucide to render new icons
+// Pass CSRF token on all HTMX requests (required for hx-post/hx-put/hx-delete)
+document.body.addEventListener('htmx:configRequest', (e) => {
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
+    if (csrf) {
+        e.detail.headers['X-CSRFToken'] = csrf;
+    }
+});
+
+// Re-initialize icons after AJAX content swaps
+document.body.addEventListener('htmx:afterSwap', function () {
     lucide.createIcons();
 });
 
@@ -75,3 +82,31 @@ document.addEventListener('keydown', (e) => {
         closeModal();
     }
 });
+
+function toggleTheme() {
+    document.documentElement.classList.toggle('dark');
+    document.querySelectorAll('.theme-sun, .theme-moon').forEach(el => {
+        el.classList.toggle('hidden');
+    });
+    lucide.createIcons();
+}
+
+function setViewMode(context, mode) {
+    document.querySelectorAll('[data-view-mode="true"]').forEach(btn => {
+        const isActive = btn.dataset.mode === mode;
+        btn.classList.toggle('bg-background', isActive);
+        btn.classList.toggle('shadow-sm', isActive);
+        btn.classList.toggle('text-foreground', isActive);
+        btn.classList.toggle('text-muted-foreground', !isActive);
+    });
+
+    const grid = document.getElementById('view-grid');
+    const table = document.getElementById('view-table');
+    if (grid) grid.classList.toggle('hidden', mode !== 'grid');
+    if (table) table.classList.toggle('hidden', mode !== 'table');
+
+    const container = document.getElementById('product-list-container');
+    if (container) container.dataset.viewMode = mode;
+
+    lucide.createIcons();
+}

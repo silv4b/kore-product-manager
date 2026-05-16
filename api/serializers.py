@@ -1,6 +1,7 @@
-from rest_framework import serializers
-from products.models import Category, Product, PriceHistory, ProductMovement
 from django.contrib.auth.models import User
+from rest_framework import serializers
+
+from products.models import Category, PriceHistory, Product, ProductMovement
 
 
 class UserSerializer(serializers.ModelSerializer):

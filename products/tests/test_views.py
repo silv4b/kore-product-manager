@@ -1,15 +1,16 @@
 from decimal import Decimal
-from django.forms import ModelForm
-from django.test import TestCase, Client
+
 from django.contrib.auth.models import User
+from django.forms import ModelForm
+from django.test import Client
 from django.urls import reverse
-from django.contrib.messages import get_messages
-from products.models import Product, Category, PriceHistory
+
+from products.models import Category, Product
 from products.tests.factories import (
-    UserFactory,
     CategoryFactory,
-    ProductFactory,
     PriceHistoryFactory,
+    ProductFactory,
+    UserFactory,
 )
 from products.tests.test_utils import BaseTestCase
 
@@ -126,7 +127,7 @@ class ProductViewTest(BaseTestCase):
 
         # 3. Verifica se o formulário no contexto é do tipo correto
         # É melhor verificar se é uma instância de ModelForm
-        f = type(response.context["form"])
+        type(response.context["form"])
         self.assertIsInstance(response.context["form"], ModelForm)
 
     def test_product_create_view_post_valid(self):
@@ -636,7 +637,6 @@ class MessageTest(BaseTestCase):
         # beautify_response(response)  # type: ignore # _MonkeyPatchedWSGIResponse herda de HttpResponse
 
         # A string exata que a sua View gera:
-        expected_message = f'Produto "{product_name}" criado com sucesso!'
 
         # 1. Validação via Helper
         self.assertContains(response, "criado com sucesso!")

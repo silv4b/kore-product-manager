@@ -1,36 +1,32 @@
-from django.db import models
+from typing import TYPE_CHECKING
+
 from django.contrib.auth.models import User
+from django.contrib.auth.signals import user_logged_in
+from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .models import PriceHistory, ProductMovement
 
 
 class Category(models.Model):
-    user = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="categories", null=True, blank=True
-    )
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="categories", null=True, blank=True)
     name = models.CharField(max_length=100)
     slug = models.SlugField()
     description = models.TextField(blank=True)
     color = models.CharField(max_length=7, default="#3b82f6")  # Hex color para UI
 
+    class Meta:
+        verbose_name_plural = "Categories"
+        constraints = [models.UniqueConstraint(fields=["user", "slug"], name="unique_user_slug")]
+
     def __str__(self):
         return self.name
 
-    class Meta:
-        verbose_name_plural = "Categories"
-        constraints = [
-            models.UniqueConstraint(fields=["user", "slug"], name="unique_user_slug")
-        ]
-
 
 class Product(models.Model):
-    user = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="products", null=True, blank=True
-    )
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="products", null=True, blank=True)
     categories = models.ManyToManyField(
         Category,
         related_name="products",
@@ -55,18 +51,16 @@ class Product(models.Model):
 
 
 class PriceHistory(models.Model):
-    product = models.ForeignKey(
-        Product, on_delete=models.CASCADE, related_name="price_history"
-    )
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="price_history")
     price = models.DecimalField(max_digits=10, decimal_places=2)
     changed_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"{self.product.name} - R$ {self.price} em {self.changed_at.strftime('%d/%m/%Y %H:%M')}"
 
     class Meta:
         verbose_name_plural = "Price Histories"
         ordering = ["-changed_at"]
+
+    def __str__(self):
+        return f"{self.product.name} - R$ {self.price} em {self.changed_at.strftime('%d/%m/%Y %H:%M')}"
 
 
 class ProductMovement(models.Model):
@@ -74,20 +68,20 @@ class ProductMovement(models.Model):
         ("IN", "Entrada"),
         ("OUT", "Saída"),
     ]
-    product = models.ForeignKey(
-        Product, on_delete=models.CASCADE, related_name="movements"
-    )
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="movements")
     type = models.CharField(max_length=3, choices=MOVEMENT_TYPES)
     quantity = models.IntegerField()
     reason = models.CharField(max_length=255, blank=True)
     moved_at = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self):
-        return f"{self.get_type_display()} - {self.product.name} ({self.quantity}) em {self.moved_at.strftime('%d/%m/%Y %H:%M')}"
-
     class Meta:
         verbose_name_plural = "Product Movements"
         ordering = ["-moved_at"]
+
+    def __str__(self):
+        display_type = self.get_type_display()
+        moved = self.moved_at.strftime("%d/%m/%Y %H:%M")
+        return f"{display_type} - {self.product.name} ({self.quantity}) em {moved}"
 
 
 class Profile(models.Model):
@@ -107,9 +101,6 @@ class Profile(models.Model):
 def create_user_profile(sender, instance, created, **kwargs):
     if created:
         Profile.objects.get_or_create(user=instance)
-
-
-from django.contrib.auth.signals import user_logged_in
 
 
 @receiver(post_save, sender=User)
@@ -188,9 +179,7 @@ def track_stock_changes(sender, instance, created, **kwargs):
         diff = instance.stock - movements_sum
 
         if diff > 0:
-            ProductMovement.objects.create(
-                product=instance, type="IN", quantity=diff, reason="Ajuste de estoque"
-            )
+            ProductMovement.objects.create(product=instance, type="IN", quantity=diff, reason="Ajuste de estoque")
         elif diff < 0:
             ProductMovement.objects.create(
                 product=instance,

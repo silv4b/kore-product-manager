@@ -11,11 +11,13 @@ dependencies = [
     "django-filter>=25.2",
     "djangorestframework>=3.16.1",
     "djangorestframework-simplejwt>=5.5.1",
+    "dotenv>=0.9.9",
     "drf-spectacular>=0.29.0",
     "gunicorn>=25.1.0",
     "psycopg>=3.3.2",
     "psycopg2-binary>=2.9.11",
     "python-dotenv>=1.2.1",
+    "ruff>=0.15.13",
     "uvicorn>=0.30.1",
     "whitenoise>=6.11.0",
 ]
@@ -23,9 +25,6 @@ dependencies = [
 [dependency-groups]
 dev = [
     "coverage>=7.13.4",
-    "django-browser-reload>=1.21.0",
-    "django-watchfiles>=1.4.0",
-    "dotenv>=0.9.9",
     "factory-boy>=3.3.3",
     "poethepoet>=0.41.0",
     "pytest>=9.0.2",
@@ -35,26 +34,31 @@ dev = [
 ]
 
 [tool.poe.tasks]
-# Npm tasks
-npm_watch = { shell = "npm run watch" }
 npm_build = { shell = "npm run build" }
-
-# Django tasks
 runserver = "python manage.py runserver"
 migrate = { shell = "python manage.py makemigrations && python manage.py migrate" }
-
-# Test Tasks
 pytest = { shell = "pytest" }
 coverage = { shell = "coverage run -m pytest" }
 report = { shell = "coverage report" }
 coveragehtml = { shell = "coverage html" }
 
-# Taks sequences
 [tool.poe.tasks.test]
 sequence = ["coverage", "coveragehtml", "report"]
 
-[tool.poe.tasks.dev]
-sequence = ["npm_watch", "runserver"]
+[tool.ruff]
+line-length = 120
+exclude = ["**/migrations/*.py"]
 
-[tool.poe.tasks.server]
-sequence = ["runserver"]
+[tool.ruff.lint]
+extend-select = [
+    "DJ",       # flake8-django: Django-specific bugs
+    "E",        # pycodestyle errors
+    "F",        # Pyflakes
+    "W",        # pycodestyle warnings
+    "I",        # isort
+    "UP",       # pyupgrade
+    "B",        # flake8-bugbear
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/*.py" = ["E501"]

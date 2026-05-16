@@ -5,6 +5,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="csrf-token" content="{{ csrf_token }}">
     <title>Kore</title>
     <link rel="icon" type="image/x-icon" href="/static/img/favicon.ico" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -25,11 +26,14 @@
             </a>
 
             <nav class="flex gap-1 md:gap-2 items-center">
-                <a href="{% url 'toggle_theme' %}"
+                <a href="#"
+                    hx-post="{% url 'toggle_theme' %}"
+                    hx-swap="none"
+                    onclick="toggleTheme()"
                     class="btn btn-icon btn-ghost bg-transparent border-none shadow-none hover:bg-muted text-foreground"
                     aria-label="Alternar Tema">
-                    <i data-lucide="sun" class="w-5 h-5 block dark:hidden"></i>
-                    <i data-lucide="moon" class="w-5 h-5 hidden dark:block"></i>
+                    <i data-lucide="sun" class="w-5 h-5 block dark:hidden theme-sun"></i>
+                    <i data-lucide="moon" class="w-5 h-5 hidden dark:block theme-moon"></i>
                 </a>
 
                 {% if user.is_authenticated %}
@@ -66,6 +70,13 @@
                     title="Movimentações de Estoque">
                     <i data-lucide="package-search" class="w-4 h-4 text-primary"></i>
                     <span class="hidden lg:inline">Estoque</span>
+                </a>
+
+                <a href="{% url 'partner_list' %}"
+                    class="btn btn-ghost btn-sm bg-transparent border-none shadow-none text-foreground hover:bg-muted font-medium flex items-center gap-2 px-2 md:px-3"
+                    title="Clientes e Fornecedores">
+                    <i data-lucide="users" class="w-4 h-4"></i>
+                    <span class="hidden lg:inline">Parceiros</span>
                 </a>
 
                 <a href="{% url 'profile' %}"

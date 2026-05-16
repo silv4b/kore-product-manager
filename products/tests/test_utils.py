@@ -2,7 +2,8 @@
 Utilitários e funções auxiliares para testes do aplicativo de produtos.
 """
 
-from django.test import TestCase
+from django.test import Client, TestCase
+
 from products.tests.factories import (
     UserFactory,
 )
@@ -19,6 +20,8 @@ class BaseTestCase(TestCase):
         self.user = UserFactory.create()
         self.other_user = UserFactory.create(username="otheruser")
         self.client.login(username="testuser", password="testpass123")
+
+    def get_form_errors(self, response):
         """Get form errors from response context"""
         if "form" in response.context:
             return response.context["form"].errors

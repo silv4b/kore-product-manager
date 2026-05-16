@@ -1,12 +1,13 @@
-from django.contrib import admin
-from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.contrib import admin
+from django.urls import include, path
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("accounts/", include("allauth.urls")),
     path("products/", include("products.urls")),
+    path("partners/", include("partners.urls")),
     path("api/v1/", include("api.urls")),
     path("", include("products.urls")),
 ]
@@ -14,8 +15,5 @@ urlpatterns = [
 if settings.DEBUG:
     urlpatterns += static(
         settings.STATIC_URL,
-        document_root=settings.STATIC_ROOT,
+        document_root=settings.BASE_DIR / "static",
     )
-    urlpatterns += [
-        path("__reload__/", include("django_browser_reload.urls")),
-    ]

@@ -1,14 +1,17 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from django.db import models
-from django.contrib.auth.models import User
-from .models import Product, Category, PriceHistory, ProductMovement
-from .forms import ProductForm, CategoryForm, MovementForm
-from django.contrib import messages
-from django.db.models import Min, Sum, F, ExpressionWrapper, DecimalField, Q
-from django.utils import timezone
 from datetime import datetime, timedelta
-from django.db.models import Count
+
+from django.contrib import messages
+from django.contrib.auth import logout as auth_logout
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
+from django.db import models
+from django.db.models import Count, DecimalField, ExpressionWrapper, F, Min, Q, Sum
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
+
+from .forms import CategoryForm, MovementForm, ProductForm
+from .models import Category, PriceHistory, Product, ProductMovement
 
 
 # --- Product Views ---
@@ -24,36 +27,12 @@ def product_list(request):
     session_filters = request.session.get("filters_dashboard", {})
 
     q = request.GET.get("q") if "q" in request.GET else session_filters.get("q", "")
-    status = (
-        request.GET.get("status")
-        if "status" in request.GET
-        else session_filters.get("status", "")
-    )
-    min_price = (
-        request.GET.get("min_price")
-        if "min_price" in request.GET
-        else session_filters.get("min_price", "")
-    )
-    max_price = (
-        request.GET.get("max_price")
-        if "max_price" in request.GET
-        else session_filters.get("max_price", "")
-    )
-    min_stock = (
-        request.GET.get("min_stock")
-        if "min_stock" in request.GET
-        else session_filters.get("min_stock", "")
-    )
-    max_stock = (
-        request.GET.get("max_stock")
-        if "max_stock" in request.GET
-        else session_filters.get("max_stock", "")
-    )
-    category_id = (
-        request.GET.get("category")
-        if "category" in request.GET
-        else session_filters.get("category", "")
-    )
+    status = request.GET.get("status") if "status" in request.GET else session_filters.get("status", "")
+    min_price = request.GET.get("min_price") if "min_price" in request.GET else session_filters.get("min_price", "")
+    max_price = request.GET.get("max_price") if "max_price" in request.GET else session_filters.get("max_price", "")
+    min_stock = request.GET.get("min_stock") if "min_stock" in request.GET else session_filters.get("min_stock", "")
+    max_stock = request.GET.get("max_stock") if "max_stock" in request.GET else session_filters.get("max_stock", "")
+    category_id = request.GET.get("category") if "category" in request.GET else session_filters.get("category", "")
 
     # Parâmetros de Ordenação
     sort_field = request.GET.get("sort", "name")
@@ -94,9 +73,7 @@ def product_list(request):
 
     # Ordenação com Annotate para evitar duplicados
     if sort_field == "category":
-        products = products.annotate(sort_key=Min("categories__name")).order_by(
-            f"{prefix}sort_key"
-        )
+        products = products.annotate(sort_key=Min("categories__name")).order_by(f"{prefix}sort_key")
     else:
         valid_fields = {
             "name": "name",
@@ -162,9 +139,7 @@ def product_create(request):
             return redirect("product_list")
     else:
         form = ProductForm(user=request.user)
-    return render(
-        request, "products/product_form.html", {"form": form, "title": "Add Product"}
-    )
+    return render(request, "products/product_form.html", {"form": form, "title": "Add Product"})
 
 
 @login_required
@@ -174,9 +149,7 @@ def product_update(request, pk):
         form = ProductForm(request.POST, instance=product, user=request.user)
         if form.is_valid():
             form.save()
-            messages.success(
-                request, f'Produto "{product.name}" atualizado com sucesso!'
-            )
+            messages.success(request, f'Produto "{product.name}" atualizado com sucesso!')
             return redirect("product_list")
     else:
         form = ProductForm(instance=product, user=request.user)
@@ -198,9 +171,7 @@ def product_delete(request, pk):
 
     # Se for uma requisição HTMX, renderiza o modal
     if request.headers.get("HX-Request"):
-        return render(
-            request, "products/product_delete_modal.html", {"product": product}
-        )
+        return render(request, "products/product_delete_modal.html", {"product": product})
 
     return render(request, "products/product_confirm_delete.html", {"product": product})
 
@@ -234,9 +205,7 @@ def product_bulk_action(request):
         elif action == "add_category":
             category_id = request.POST.get("bulk_category_id")
             if category_id:
-                category = get_object_or_404(
-                    Category, id=category_id, user=request.user
-                )
+                category = get_object_or_404(Category, id=category_id, user=request.user)
                 for product in products:
                     product.categories.add(category)
                 messages.success(
@@ -320,16 +289,12 @@ def price_history_overview(request):
         return redirect("account_login")
 
     # Base Queryset com otimização de prefetch
-    user_products = Product.objects.filter(user=request.user).prefetch_related(
-        "price_history"
-    )
+    user_products = Product.objects.filter(user=request.user).prefetch_related("price_history")
 
     # Filtro por Termo de Busca (q)
     q = request.GET.get("q", "")
     if q:
-        user_products = user_products.filter(
-            models.Q(name__icontains=q) | models.Q(description__icontains=q)
-        )
+        user_products = user_products.filter(models.Q(name__icontains=q) | models.Q(description__icontains=q))
 
     # Filtro por Categoria
     category_id = request.GET.get("category")
@@ -341,9 +306,7 @@ def price_history_overview(request):
 
     # Produto com mais alterações
     produto_mais_alteracoes_obj = (
-        user_products.annotate(num_alteracoes=Count("price_history"))
-        .order_by("-num_alteracoes")
-        .first()
+        user_products.annotate(num_alteracoes=Count("price_history")).order_by("-num_alteracoes").first()
     )
     produto_mais_alteracoes = {
         "produto": produto_mais_alteracoes_obj,
@@ -361,9 +324,7 @@ def price_history_overview(request):
     # Query otimizada para buscar os dois últimos preços de todos os produtos
     from django.db.models import OuterRef, Subquery
 
-    latest_prices = PriceHistory.objects.filter(product=OuterRef("pk")).order_by(
-        "-changed_at"
-    )
+    latest_prices = PriceHistory.objects.filter(product=OuterRef("pk")).order_by("-changed_at")
     products_with_prices = user_products.annotate(
         current_price=Subquery(latest_prices.values("price")[:1]),
         previous_price=Subquery(latest_prices.values("price")[1:2]),
@@ -389,9 +350,7 @@ def price_history_overview(request):
     produtos_com_historico = []
     for product in user_products:
         # Ordenação em Python para aproveitar o prefetch_related e evitar N+1 queries
-        history = sorted(
-            product.price_history.all(), key=lambda x: x.changed_at, reverse=True
-        )
+        history = sorted(product.price_history.all(), key=lambda x: x.changed_at, reverse=True)
 
         if not history:
             continue
@@ -423,9 +382,7 @@ def price_history_overview(request):
 
     # Ordenar por data da última alteração
     produtos_com_historico.sort(
-        key=lambda x: (
-            x["ultima_alteracao"].changed_at if x["ultima_alteracao"] else datetime.min
-        ),
+        key=lambda x: x["ultima_alteracao"].changed_at if x["ultima_alteracao"] else datetime.min,
         reverse=True,
     )
 
@@ -480,6 +437,12 @@ def product_movement_view(request, pk):
     if tipo in ["IN", "OUT"]:
         movements = movements.filter(type=tipo)
 
+    view_mode = "table"
+    if request.user.is_authenticated:
+        view_mode = request.user.profile.view_preferences.get("product_movement", "table")
+    else:
+        view_mode = request.session.get("view_mode_product_movement", "table")
+
     return render(
         request,
         "products/product_movement.html",
@@ -489,9 +452,7 @@ def product_movement_view(request, pk):
             "data_inicio": data_inicio,
             "data_fim": data_fim,
             "tipo": tipo,
-            "view_mode": request.user.profile.view_preferences.get(
-                "product_movement", "table"
-            ),
+            "view_mode": view_mode,
             "view_context": "product_movement",
         },
     )
@@ -509,18 +470,14 @@ def product_movement_overview(request):
     # Filtro por Termo de Busca (q)
     q = request.GET.get("q", "")
     if q:
-        user_products = user_products.filter(
-            models.Q(name__icontains=q) | models.Q(description__icontains=q)
-        )
+        user_products = user_products.filter(models.Q(name__icontains=q) | models.Q(description__icontains=q))
 
     # Filtro por Categoria
     category_id = request.GET.get("category")
     if category_id:
         user_products = user_products.filter(categories__id=category_id)
 
-    movements = ProductMovement.objects.filter(
-        product__in=user_products
-    ).select_related("product")
+    movements = ProductMovement.objects.filter(product__in=user_products).select_related("product")
 
     # Filtros de data e tipo
     data_inicio = request.GET.get("data_inicio")
@@ -550,12 +507,8 @@ def product_movement_overview(request):
     # Estatísticas
     from django.db.models import Sum
 
-    total_in = (
-        movements.filter(type="IN").aggregate(total=Sum("quantity"))["total"] or 0
-    )
-    total_out = (
-        movements.filter(type="OUT").aggregate(total=Sum("quantity"))["total"] or 0
-    )
+    total_in = movements.filter(type="IN").aggregate(total=Sum("quantity"))["total"] or 0
+    total_out = movements.filter(type="OUT").aggregate(total=Sum("quantity"))["total"] or 0
 
     context = {
         "movements": movements,
@@ -567,9 +520,7 @@ def product_movement_overview(request):
         "data_inicio": data_inicio,
         "data_fim": data_fim,
         "tipo": tipo,
-        "view_mode": request.user.profile.view_preferences.get(
-            "movement_overview", "table"
-        ),
+        "view_mode": request.user.profile.view_preferences.get("movement_overview", "table"),
         "view_context": "movement_overview",
     }
 
@@ -610,9 +561,7 @@ def movement_select_product(request, type):
         "category_id": category_id,
         "status": status,
         "title": f"Selecionar Produto para {('Entrada' if type == 'IN' else 'Saída')}",
-        "view_mode": request.user.profile.view_preferences.get(
-            "movement_select", "grid"
-        ),
+        "view_mode": request.user.profile.view_preferences.get("movement_select", "grid"),
         "view_context": "movement_select",
     }
     return render(request, "products/movement_select_product.html", context)
@@ -698,9 +647,7 @@ def category_list(request):
     prefix = "" if sort_direction == "asc" else "-"
 
     # 4. Aplica a ordenação no QuerySet
-    categories = Category.objects.filter(user=request.user).order_by(
-        f"{prefix}{target_field}"
-    )
+    categories = Category.objects.filter(user=request.user).order_by(f"{prefix}{target_field}")
 
     # Determine view mode
     view_mode = "grid"
@@ -765,9 +712,7 @@ def category_delete(request, pk):
         category.delete()
         messages.success(request, "Categoria removida com sucesso.")
         return redirect("category_list")
-    return render(
-        request, "products/category_confirm_delete.html", {"category": category}
-    )
+    return render(request, "products/category_confirm_delete.html", {"category": category})
 
 
 @login_required
@@ -829,9 +774,7 @@ def delete_account_view(request):
             messages.success(request, "Sua conta foi excluída permanentemente.")
             return redirect("account_login")
         else:
-            messages.error(
-                request, "Falha na exclusão: A senha informada está incorreta."
-            )
+            messages.error(request, "Falha na exclusão: A senha informada está incorreta.")
             return redirect("profile")
 
     return redirect("profile")
@@ -843,9 +786,7 @@ def user_public_catalog(request, username):
 
     q = request.GET.get("q")
     if q:
-        products = products.filter(name__icontains=q) | products.filter(
-            description__icontains=q
-        )
+        products = products.filter(name__icontains=q) | products.filter(description__icontains=q)
 
     category_id = request.GET.get("category")
     if category_id:
@@ -876,9 +817,7 @@ def user_public_catalog(request, username):
     # Determine view mode
     view_mode = "grid"
     if request.user.is_authenticated:
-        view_mode = request.user.profile.view_preferences.get(
-            "user_public_catalog", "grid"
-        )
+        view_mode = request.user.profile.view_preferences.get("user_public_catalog", "grid")
     else:
         view_mode = request.session.get("view_mode_user_public_catalog", "grid")
 
@@ -936,9 +875,7 @@ def public_product_list(request):
 
     # Ordenação com Annotate
     if sort_field == "category":
-        products = products.annotate(sort_key=Min("categories__name")).order_by(
-            f"{prefix}sort_key"
-        )
+        products = products.annotate(sort_key=Min("categories__name")).order_by(f"{prefix}sort_key")
     elif sort_field == "user":
         products = products.order_by(f"{prefix}user__username")
     else:
@@ -962,9 +899,7 @@ def public_product_list(request):
     # Determine view mode
     view_mode = "grid"
     if request.user.is_authenticated:
-        view_mode = request.user.profile.view_preferences.get(
-            "public_product_list", "grid"
-        )
+        view_mode = request.user.profile.view_preferences.get("public_product_list", "grid")
     else:
         view_mode = request.session.get("view_mode_public_product_list", "grid")
 
@@ -995,19 +930,19 @@ def toggle_theme(request):
     request.session["theme"] = new_theme
     if request.user.is_authenticated:
         profile = request.user.profile
-        profile.theme = new_theme
-        profile.save()
+        if profile.theme != new_theme:
+            profile.theme = new_theme
+            profile.save(update_fields=["theme"])
+    if request.headers.get("HX-Request"):
+        return HttpResponse(status=204)
     return redirect(request.META.get("HTTP_REFERER", "/"))
-
-
-from django.contrib.auth import logout
 
 
 @login_required
 def logout_view(request):
     if request.method == "POST":
         theme = request.session.get("theme", "light")
-        logout(request)
+        auth_logout(request)
         request.session["theme"] = theme
         messages.success(request, "Você saiu do sistema.")
         return redirect("account_login")
@@ -1018,11 +953,13 @@ def set_view_mode(request, context, mode):
     if mode in ["grid", "table"]:
         if request.user.is_authenticated:
             profile = request.user.profile
-            # Ensure view_preferences is a dict
             if not isinstance(profile.view_preferences, dict):
                 profile.view_preferences = {}
-            profile.view_preferences[context] = mode
-            profile.save()
+            if profile.view_preferences.get(context) != mode:
+                profile.view_preferences[context] = mode
+                profile.save(update_fields=["view_preferences"])
         else:
             request.session[f"view_mode_{context}"] = mode
+    if request.headers.get("HX-Request"):
+        return HttpResponse(status=204)
     return redirect(request.META.get("HTTP_REFERER", "/"))

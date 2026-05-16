@@ -48,4 +48,4 @@ EXPOSE 8005
 
 ENTRYPOINT ["/app/entrypoint.sh"]
 
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "kore-product-manager.wsgi:application"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8005", "kore-product-manager.wsgi:application"]
