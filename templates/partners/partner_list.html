@@ -24,8 +24,14 @@
                 </p>
             </div>
             <div class="mt-2 flex gap-2">
-                <a href="{% url 'customer_list' %}" class="btn btn-ghost border border-border flex-1">Ver Todos</a>
-                <a href="{% url 'customer_create' %}" class="btn btn-primary">Novo</a>
+                <a href="{% url 'customer_list' %}" {% comment %} class="btn btn-ghost border border-border flex-1"
+                    {% endcomment %}
+                    class="btn btn-ghost border border-border bg-transparent h-10 px-6 text-foreground hover:bg-muted font-bold flex-1">
+                    Ver Todos
+                </a>
+                <a href="{% url 'customer_create' %}" class="btn btn-secondary h-10 border-border">
+                    Novo
+                </a>
             </div>
         </div>
 
@@ -42,8 +48,13 @@
                 <p class="text-sm text-muted-foreground">Empresas que fornecem produtos para seu estoque.</p>
             </div>
             <div class="mt-2 flex gap-2">
-                <a href="{% url 'supplier_list' %}" class="btn btn-ghost border border-border flex-1">Ver Todos</a>
-                <a href="{% url 'supplier_create' %}" class="btn btn-secondary">Novo</a>
+                <a href="{% url 'supplier_list' %}"
+                    class="btn btn-ghost border border-border bg-transparent h-10 px-6 text-foreground hover:bg-muted font-bold flex-1">
+                    Ver Todos
+                </a>
+                <a href="{% url 'supplier_create' %}" class="btn btn-secondary h-10 border-border">
+                    Novo
+                </a>
             </div>
         </div>
     </div>

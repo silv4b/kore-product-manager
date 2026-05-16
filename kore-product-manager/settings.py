@@ -158,11 +158,6 @@ USE_TZ = True
 USE_THOUSAND_SEPARATOR = True
 NUMBER_GROUPING = 3
 
-AUTHENTICATION_BACKENDS = [
-    "django.contrib.auth.backends.ModelBackend",
-    "allauth.account.auth_backends.AuthenticationBackend",
-]
-
 SITE_ID = 1
 LOGIN_REDIRECT_URL = "/"
 LOGIN_URL = "/accounts/login/"

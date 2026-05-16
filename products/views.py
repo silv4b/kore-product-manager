@@ -419,17 +419,14 @@ def product_movement_view(request, pk):
 
     if data_inicio:
         try:
-            from datetime import datetime
-
-            data_inicio_obj = datetime.strptime(data_inicio, "%Y-%m-%d")
+            data_inicio_obj = timezone.make_aware(datetime.strptime(data_inicio, "%Y-%m-%d"))
             movements = movements.filter(moved_at__gte=data_inicio_obj)
         except ValueError:
             pass
 
     if data_fim:
         try:
-            data_fim_obj = datetime.strptime(data_fim, "%Y-%m-%d")
-            data_fim_obj = data_fim_obj + timedelta(days=1)
+            data_fim_obj = timezone.make_aware(datetime.strptime(data_fim, "%Y-%m-%d")) + timedelta(days=1)
             movements = movements.filter(moved_at__lt=data_fim_obj)
         except ValueError:
             pass
@@ -486,17 +483,14 @@ def product_movement_overview(request):
 
     if data_inicio:
         try:
-            from datetime import datetime
-
-            data_inicio_obj = datetime.strptime(data_inicio, "%Y-%m-%d")
+            data_inicio_obj = timezone.make_aware(datetime.strptime(data_inicio, "%Y-%m-%d"))
             movements = movements.filter(moved_at__gte=data_inicio_obj)
         except ValueError:
             pass
 
     if data_fim:
         try:
-            data_fim_obj = datetime.strptime(data_fim, "%Y-%m-%d")
-            data_fim_obj = data_fim_obj + timedelta(days=1)
+            data_fim_obj = timezone.make_aware(datetime.strptime(data_fim, "%Y-%m-%d")) + timedelta(days=1)
             movements = movements.filter(moved_at__lt=data_fim_obj)
         except ValueError:
             pass
@@ -810,8 +804,11 @@ def user_public_catalog(request, username):
 
     stats = {
         "total_count": products.count(),
-        "total_stock": sum(p.stock for p in products),
-        "total_value": sum(p.price * p.stock for p in products),
+        "total_stock": products.aggregate(Sum("stock"))["stock__sum"] or 0,
+        "total_value": products.annotate(
+            val=ExpressionWrapper(F("price") * F("stock"), output_field=DecimalField())
+        ).aggregate(total=Sum("val"))["total"]
+        or 0,
     }
 
     # Determine view mode

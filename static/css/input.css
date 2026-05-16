@@ -12,3 +12,13 @@ html,
 body {
     font-family: var(--font-sans);
 }
+
+.dark {
+    --background: oklch(0.185 0 0);
+    --card: oklch(0.235 0 0);
+    --popover: oklch(0.285 0 0);
+    --muted: oklch(0.285 0 0);
+    --secondary: oklch(0.285 0 0);
+    --sidebar: oklch(0.235 0 0);
+    --sidebar-accent: oklch(0.285 0 0);
+}

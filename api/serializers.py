@@ -45,10 +45,16 @@ class ProductSerializer(serializers.ModelSerializer):
     category_ids = serializers.PrimaryKeyRelatedField(
         many=True,
         write_only=True,
-        queryset=Category.objects.all(),
+        queryset=Category.objects.none(),
         source="categories",
         required=False,
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get("request")
+        if request and hasattr(request, "user"):
+            self.fields["category_ids"].queryset = Category.objects.filter(user=request.user)
 
     class Meta:
         model = Product

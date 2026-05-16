@@ -52,7 +52,8 @@ class ProductForm(forms.ModelForm):
 
     def clean_stock(self):
         stock = self.cleaned_data.get("stock")
-        assert stock is not None
+        if stock is None:
+            raise forms.ValidationError("O campo de estoque é obrigatório.")
         if stock < 0:
             raise forms.ValidationError("Ops! Você não pode ter um estoque menor que zero.")
         return stock
