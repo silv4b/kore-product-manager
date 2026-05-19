@@ -25,7 +25,18 @@ class Category(models.Model):
         return self.name
 
 
+class ProductManager(models.Manager):
+    def for_user(self, user):
+        if not user.is_authenticated:
+            return self.none()
+        return self.filter(user=user)
+
+    def public(self):
+        return self.filter(is_public=True)
+
+
 class Product(models.Model):
+    # 1. Campos do Banco de Dados Primeiro
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="products", null=True, blank=True)
     categories = models.ManyToManyField(
         Category,
@@ -40,12 +51,15 @@ class Product(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    """ Como price_history é injetado em Product com  <related_name="price_history">
-        isso avisa ao linter que price_history defato existe em Product.
-    """
+    # 2. Managers vêm logo após os campos
+    objects = ProductManager()
+
+    # Como price_history é injetado em Product com <related_name="price_history">.
+    # Isso avisa ao linter que price_history de fato existe em Product.
     if TYPE_CHECKING:
         price_history: models.Manager["PriceHistory"]
 
+    # 3. Métodos do modelo por último
     def __str__(self):
         return self.name
 
@@ -68,6 +82,8 @@ class ProductMovement(models.Model):
         ("IN", "Entrada"),
         ("OUT", "Saída"),
     ]
+
+    # Campos do Banco de Dados
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="movements")
     type = models.CharField(max_length=3, choices=MOVEMENT_TYPES)
     quantity = models.IntegerField()
@@ -78,6 +94,12 @@ class ProductMovement(models.Model):
         verbose_name_plural = "Product Movements"
         ordering = ["-moved_at"]
 
+    # 3. Type Checking para o Pylance parar de reclamar
+    if TYPE_CHECKING:
+
+        def get_type_display(self) -> str: ...
+
+    # 4. Métodos da classe
     def __str__(self):
         display_type = self.get_type_display()
         moved = self.moved_at.strftime("%d/%m/%Y %H:%M")

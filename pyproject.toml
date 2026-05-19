@@ -40,24 +40,29 @@ pytest = { shell = "pytest" }
 coverage = { shell = "coverage run -m pytest" }
 report = { shell = "coverage report" }
 coveragehtml = { shell = "coverage html" }
+ruff-fix = { shell = "ruff check . --fix" }
+ruffer = { shell = "ruff check ." }
 
 [tool.poe.tasks.test]
 sequence = ["coverage", "coveragehtml", "report"]
 
+# Ruff configurations
 [tool.ruff]
-line-length = 120
+line-length = 150
 exclude = ["**/migrations/*.py"]
 
 [tool.ruff.lint]
-extend-select = [
-    "DJ",       # flake8-django: Django-specific bugs
-    "E",        # pycodestyle errors
-    "F",        # Pyflakes
-    "W",        # pycodestyle warnings
-    "I",        # isort
-    "UP",       # pyupgrade
-    "B",        # flake8-bugbear
+select = [
+    "F",  # Pyflakes
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "I",  # isort
+    "UP", # pyupgrade
+    "B",  # flake8-bugbear
+    "DJ", # flake8-django
+    "TC", # flake8-type-checking
 ]
+# Bloco pronto para futuras exceções
 
 [tool.ruff.lint.per-file-ignores]
 "**/tests/*.py" = ["E501"]

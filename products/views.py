@@ -1,187 +1,190 @@
 from datetime import datetime, timedelta
+from typing import Any, cast
 
 from django.contrib import messages
 from django.contrib.auth import logout as auth_logout
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import User
 from django.db import models
-from django.db.models import Count, DecimalField, ExpressionWrapper, F, Min, Q, Sum
+from django.db.models import Count, DecimalField, ExpressionWrapper, F, OuterRef, Subquery, Sum
 from django.http import HttpResponse
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse_lazy
 from django.utils import timezone
+from django.views import View
+from django.views.generic import CreateView, DeleteView, DetailView, FormView, ListView, TemplateView, UpdateView
 
 from .forms import CategoryForm, MovementForm, ProductForm
 from .models import Category, PriceHistory, Product, ProductMovement
+from .utils import apply_product_filters, sort_queryset
 
 
 # --- Product Views ---
-@login_required
-def product_list(request):
-    # Lógica para limpar filtros
-    if "clear" in request.GET:
-        if "filters_dashboard" in request.session:
-            del request.session["filters_dashboard"]
-        return redirect("product_list")
+class ProductListView(LoginRequiredMixin, ListView):
+    model = Product
+    template_name = "products/product_list.html"
+    context_object_name = "products"
 
-    # Recuperação de filtros da sessão
-    session_filters = request.session.get("filters_dashboard", {})
+    def dispatch(self, request, *args, **kwargs):
+        if "clear" in request.GET:
+            if "filters_dashboard" in request.session:
+                del request.session["filters_dashboard"]
+            return redirect("product_list")
+        return super().dispatch(request, *args, **kwargs)
 
-    q = request.GET.get("q") if "q" in request.GET else session_filters.get("q", "")
-    status = request.GET.get("status") if "status" in request.GET else session_filters.get("status", "")
-    min_price = request.GET.get("min_price") if "min_price" in request.GET else session_filters.get("min_price", "")
-    max_price = request.GET.get("max_price") if "max_price" in request.GET else session_filters.get("max_price", "")
-    min_stock = request.GET.get("min_stock") if "min_stock" in request.GET else session_filters.get("min_stock", "")
-    max_stock = request.GET.get("max_stock") if "max_stock" in request.GET else session_filters.get("max_stock", "")
-    category_id = request.GET.get("category") if "category" in request.GET else session_filters.get("category", "")
+    def get_queryset(self):
+        session_filters = self.request.session.get("filters_dashboard", {})
 
-    # Parâmetros de Ordenação
-    sort_field = request.GET.get("sort", "name")
-    sort_direction = request.GET.get("dir", "asc")
-    prefix = "" if sort_direction == "asc" else "-"
+        self.q = self.request.GET.get("q", session_filters.get("q", ""))
+        self.status = self.request.GET.get("status", session_filters.get("status", ""))
+        self.min_price = self.request.GET.get("min_price", session_filters.get("min_price", ""))
+        self.max_price = self.request.GET.get("max_price", session_filters.get("max_price", ""))
+        self.min_stock = self.request.GET.get("min_stock", session_filters.get("min_stock", ""))
+        self.max_stock = self.request.GET.get("max_stock", session_filters.get("max_stock", ""))
+        self.category_id = self.request.GET.get("category", session_filters.get("category", ""))
 
-    # Salva filtros na sessão
-    request.session["filters_dashboard"] = {
-        "q": q,
-        "status": status,
-        "category": category_id,
-        "min_price": min_price,
-        "max_price": max_price,
-        "min_stock": min_stock,
-        "max_stock": max_stock,
-    }
+        self.sort_field = self.request.GET.get("sort", "name")
+        self.sort_direction = self.request.GET.get("dir", "asc")
 
-    # QuerySet Base
-    products = Product.objects.filter(user=request.user)
+        self.request.session["filters_dashboard"] = {
+            "q": self.q,
+            "status": self.status,
+            "category": self.category_id,
+            "min_price": self.min_price,
+            "max_price": self.max_price,
+            "min_stock": self.min_stock,
+            "max_stock": self.max_stock,
+        }
 
-    # Filtros
-    if q:
-        products = products.filter(Q(name__icontains=q) | Q(description__icontains=q))
-    if category_id:
-        products = products.filter(categories__id=category_id)
-    if status == "public":
-        products = products.filter(is_public=True)
-    elif status == "private":
-        products = products.filter(is_public=False)
-    if min_price:
-        products = products.filter(price__gte=min_price)
-    if max_price:
-        products = products.filter(price__lte=max_price)
-    if min_stock:
-        products = products.filter(stock__gte=min_stock)
-    if max_stock:
-        products = products.filter(stock__lte=max_stock)
+        products = cast("Any", Product.objects).for_user(self.request.user)
 
-    # Ordenação com Annotate para evitar duplicados
-    if sort_field == "category":
-        products = products.annotate(sort_key=Min("categories__name")).order_by(f"{prefix}sort_key")
-    else:
+        products = apply_product_filters(
+            products,
+            q=self.q,
+            category_id=self.category_id,
+            status=self.status,
+            min_price=self.min_price,
+            max_price=self.max_price,
+            min_stock=self.min_stock,
+            max_stock=self.max_stock,
+        )
+
         valid_fields = {
             "name": "name",
             "price": "price",
             "stock": "stock",
             "status": "is_public",
         }
-        target = valid_fields.get(sort_field, "name")
-        products = products.order_by(f"{prefix}{target}")
+        products = sort_queryset(
+            products, self.sort_field, self.sort_direction, valid_fields, default_sort="name", category_sort_key="categories__name"
+        )
 
-    # Remove duplicatas residuais de filtros M2M
-    products = products.distinct()
+        return products.distinct()
 
-    # Cálculo de Estatísticas usando agregação do Banco de Dados
-    stats = {
-        "total_count": products.count(),
-        "total_stock": products.aggregate(Sum("stock"))["stock__sum"] or 0,
-        "total_value": products.annotate(
-            val=ExpressionWrapper(F("price") * F("stock"), output_field=DecimalField())
-        ).aggregate(total=Sum("val"))["total"]
-        or 0,
-    }
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        products = context["products"]
 
-    # Determine view mode
-    view_mode = "grid"
-    if request.user.is_authenticated:
-        view_mode = request.user.profile.view_preferences.get("product_list", "grid")
-    else:
-        view_mode = request.session.get("view_mode_product_list", "grid")
+        context["stats"] = {
+            "total_count": products.count(),
+            "total_stock": products.aggregate(Sum("stock"))["stock__sum"] or 0,
+            "total_value": products.annotate(val=ExpressionWrapper(F("price") * F("stock"), output_field=DecimalField())).aggregate(total=Sum("val"))[
+                "total"
+            ]
+            or 0,
+        }
+        context["categories"] = Category.objects.filter(user=self.request.user)
+        context["title"] = "Meus Produtos"
+        context["is_public_view"] = False
+        context.update(
+            {
+                "q": self.q,
+                "status": self.status,
+                "category_id": self.category_id,
+                "min_price": self.min_price,
+                "max_price": self.max_price,
+                "min_stock": self.min_stock,
+                "max_stock": self.max_stock,
+            }
+        )
 
-    return render(
-        request,
-        "products/product_list.html",
-        {
-            "products": products,
-            "categories": Category.objects.filter(user=request.user),
-            "stats": stats,
-            "title": "Meus Produtos",
-            "is_public_view": False,
-            "q": q,
-            "status": status,
-            "category_id": category_id,
-            "min_price": min_price,
-            "max_price": max_price,
-            "min_stock": min_stock,
-            "max_stock": max_stock,
-            "view_mode": view_mode,
-            "view_context": "product_list",
-        },
-    )
+        if self.request.user.is_authenticated:
+            context["view_mode"] = cast("Any", getattr(cast("Any", self.request.user), "profile", None)).view_preferences.get("product_list", "grid")
+        else:
+            context["view_mode"] = self.request.session.get("view_mode_product_list", "grid")
+
+        context["view_context"] = "product_list"
+        return context
 
 
-@login_required
-def product_create(request):
-    if request.method == "POST":
-        form = ProductForm(request.POST, user=request.user)
-        if form.is_valid():
-            product = form.save(commit=False)
-            product.user = request.user
-            product.save()
-            form.save_m2m()  # Important for ManyToMany fields
-            messages.success(request, f'Produto "{product.name}" criado com sucesso!')
-            return redirect("product_list")
-    else:
-        form = ProductForm(user=request.user)
-    return render(request, "products/product_form.html", {"form": form, "title": "Add Product"})
+class ProductCreateView(LoginRequiredMixin, CreateView):
+    model = Product
+    form_class = ProductForm
+    template_name = "products/product_form.html"
+    success_url = reverse_lazy("product_list")
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
+
+    def form_valid(self, form):
+        product = form.save(commit=False)
+        product.user = self.request.user
+        product.save()
+        form.save_m2m()
+        messages.success(self.request, f'Produto "{product.name}" criado com sucesso!')
+        return cast("Any", super()).form_valid(form)
 
 
-@login_required
-def product_update(request, pk):
-    product = get_object_or_404(Product, pk=pk, user=request.user)
-    if request.method == "POST":
-        form = ProductForm(request.POST, instance=product, user=request.user)
-        if form.is_valid():
-            form.save()
-            messages.success(request, f'Produto "{product.name}" atualizado com sucesso!')
-            return redirect("product_list")
-    else:
-        form = ProductForm(instance=product, user=request.user)
-    return render(
-        request,
-        "products/product_form.html",
-        {"form": form, "title": "Edit Product", "product": product},
-    )
+class ProductUpdateView(LoginRequiredMixin, UpdateView):
+    model = Product
+    form_class = ProductForm
+    template_name = "products/product_form.html"
+    success_url = reverse_lazy("product_list")
+    object: Product
+
+    def get_queryset(self):
+        return Product.objects.filter(user=self.request.user)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
+
+    def form_valid(self, form):
+        response = cast("Any", super()).form_valid(form)
+        messages.success(self.request, f'Produto "{self.object.name}" atualizado com sucesso!')
+        return response
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["title"] = "Edit Product"
+        return context
 
 
-@login_required
-def product_delete(request, pk):
-    product = get_object_or_404(Product, pk=pk, user=request.user)
-    if request.method == "POST":
-        product_name = product.name
-        product.delete()
-        messages.success(request, f'Produto "{product_name}" removido permanentemente.')
-        return redirect("product_list")
+class ProductDeleteView(LoginRequiredMixin, DeleteView):
+    model = Product
+    success_url = reverse_lazy("product_list")
+    object: Product
 
-    # Se for uma requisição HTMX, renderiza o modal
-    if request.headers.get("HX-Request"):
-        return render(request, "products/product_delete_modal.html", {"product": product})
+    def get_queryset(self):
+        return Product.objects.filter(user=self.request.user)
 
-    return render(request, "products/product_confirm_delete.html", {"product": product})
+    def form_valid(self, form):
+        product_name = getattr(self.object, "name", "Produto")
+        response = cast("Any", super()).form_valid(form)
+        messages.success(self.request, f'Produto "{product_name}" removido permanentemente.')
+        return response
+
+    def get_template_names(self):
+        if self.request.headers.get("HX-Request"):
+            return ["products/product_delete_modal.html"]
+        return ["products/product_confirm_delete.html"]
 
 
-@login_required
-def product_bulk_action(request):
-    """
-    Realiza ações em massa (excluir, público, privado) em múltiplos produtos.
-    """
-    if request.method == "POST":
+class ProductBulkActionView(LoginRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
         product_ids = request.POST.getlist("product_ids")
         action = request.POST.get("action")
 
@@ -189,7 +192,6 @@ def product_bulk_action(request):
             messages.warning(request, "Nenhum produto selecionado.")
             return redirect("product_list")
 
-        # Filtra apenas produtos que pertencem ao usuário logado
         products = Product.objects.filter(id__in=product_ids, user=request.user)
         count = products.count()
 
@@ -208,755 +210,738 @@ def product_bulk_action(request):
                 category = get_object_or_404(Category, id=category_id, user=request.user)
                 for product in products:
                     product.categories.add(category)
-                messages.success(
-                    request,
-                    f"Categoria '{category.name}' adicionada a {count} produtos.",
-                )
+                messages.success(request, f"Categoria '{category.name}' adicionada a {count} produtos.")
             else:
                 messages.error(request, "Nenhuma categoria selecionada.")
         else:
             messages.error(request, "Ação inválida.")
 
-    return redirect("product_list")
+        return redirect("product_list")
 
 
-def product_detail(request, pk):
-    product = get_object_or_404(Product, pk=pk)
+class ProductDetailView(DetailView):
+    model = Product
+    template_name = "products/product_detail_modal.html"
+    context_object_name = "product"
+    object: Product
 
-    # Se o produto for privado, apenas o dono pode ver (exige estar logado e ser o dono)
-    if not product.is_public:
-        if not request.user.is_authenticated or product.user != request.user:
-            messages.error(request, "Você não tem permissão para ver este produto.")
-            return redirect("account_login")
-
-    return render(request, "products/product_detail_modal.html", {"product": product})
-
-
-def price_history_view(request, pk):
-    product = get_object_or_404(Product, pk=pk)
-
-    # Verificação de permissão
-    if not product.is_public:
-        if not request.user.is_authenticated or product.user != request.user:
-            messages.error(request, "Você não tem permissão para ver este produto.")
-            return redirect("account_login")
-
-    # Filtros de data
-    price_history = product.price_history.all()
-
-    data_inicio = request.GET.get("data_inicio")
-    data_fim = request.GET.get("data_fim")
-
-    if data_inicio:
-        try:
-            # Converte string para datetime ingênuo
-            data_inicio_obj = datetime.strptime(data_inicio, "%Y-%m-%d")
-            # Torna o datetime ciente (aware) do fuso horário do projeto
-            data_inicio_obj = timezone.make_aware(data_inicio_obj)
-            price_history = price_history.filter(changed_at__gte=data_inicio_obj)
-        except ValueError:
-            pass
-
-    if data_fim:
-        try:
-            # Converte string para datetime ingênuo
-            data_fim_obj = datetime.strptime(data_fim, "%Y-%m-%d")
-            # Adiciona 1 dia para incluir todo o dia final (até 23:59:59)
-            data_fim_obj = data_fim_obj + timedelta(days=1)
-            # Torna o datetime ciente (aware)
-            data_fim_obj = timezone.make_aware(data_fim_obj)
-            price_history = price_history.filter(changed_at__lt=data_fim_obj)
-        except ValueError:
-            pass
-
-    return render(
-        request,
-        "products/price_history.html",
-        {
-            "product": product,
-            "price_history": price_history,
-            "data_inicio": data_inicio,
-            "data_fim": data_fim,
-        },
-    )
+    def dispatch(self, request, *args, **kwargs):
+        self.object = cast("Product", self.get_object())
+        if not getattr(self.object, "is_public", False):
+            if not request.user.is_authenticated or getattr(self.object, "user", None) != request.user:
+                messages.error(request, "Você não tem permissão para ver este produto.")
+                return redirect("account_login")
+        return super().dispatch(request, *args, **kwargs)
 
 
-def price_history_overview(request):
-    """Dashboard consolidado de histórico de preços de todos os produtos"""
-    # Apenas produtos do usuário logado
-    if not request.user.is_authenticated:
-        messages.error(request, "Você precisa estar logado para acessar esta página.")
-        return redirect("account_login")
+class PriceHistoryView(DetailView):
+    model = Product
+    template_name = "products/price_history.html"
+    context_object_name = "product"
+    object: Product
 
-    # Base Queryset com otimização de prefetch
-    user_products = Product.objects.filter(user=request.user).prefetch_related("price_history")
+    def dispatch(self, request, *args, **kwargs):
+        self.object = cast("Product", self.get_object())
+        if not getattr(self.object, "is_public", False):
+            if not request.user.is_authenticated or getattr(self.object, "user", None) != request.user:
+                messages.error(request, "Você não tem permissão para ver este produto.")
+                return redirect("account_login")
+        return super().dispatch(request, *args, **kwargs)
 
-    # Filtro por Termo de Busca (q)
-    q = request.GET.get("q", "")
-    if q:
-        user_products = user_products.filter(models.Q(name__icontains=q) | models.Q(description__icontains=q))
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        price_history = cast("Any", self.object).price_history.all()
 
-    # Filtro por Categoria
-    category_id = request.GET.get("category")
-    if category_id:
-        user_products = user_products.filter(categories__id=category_id)
+        data_inicio = self.request.GET.get("data_inicio")
+        data_fim = self.request.GET.get("data_fim")
 
-    # Estatísticas gerais
-    total_alteracoes = PriceHistory.objects.filter(product__in=user_products).count()
+        if data_inicio:
+            try:
+                data_inicio_obj = timezone.make_aware(datetime.strptime(data_inicio, "%Y-%m-%d"))
+                price_history = price_history.filter(changed_at__gte=data_inicio_obj)
+            except ValueError:
+                pass
 
-    # Produto com mais alterações
-    produto_mais_alteracoes_obj = (
-        user_products.annotate(num_alteracoes=Count("price_history")).order_by("-num_alteracoes").first()
-    )
-    produto_mais_alteracoes = {
-        "produto": produto_mais_alteracoes_obj,
-        "count": (
-            produto_mais_alteracoes_obj.num_alteracoes  # type: ignore
-            if produto_mais_alteracoes_obj
-            else 0
-        ),
-    }
+        if data_fim:
+            try:
+                data_fim_obj = timezone.make_aware(datetime.strptime(data_fim, "%Y-%m-%d")) + timedelta(days=1)
+                price_history = price_history.filter(changed_at__lt=data_fim_obj)
+            except ValueError:
+                pass
 
-    # Calcular maior aumento e redução percentual
-    maior_aumento = {"produto": None, "percentual": 0}
-    maior_reducao = {"produto": None, "percentual": 0}
+        context["price_history"] = price_history
+        context["data_inicio"] = data_inicio
+        context["data_fim"] = data_fim
+        return context
 
-    # Query otimizada para buscar os dois últimos preços de todos os produtos
-    from django.db.models import OuterRef, Subquery
 
-    latest_prices = PriceHistory.objects.filter(product=OuterRef("pk")).order_by("-changed_at")
-    products_with_prices = user_products.annotate(
-        current_price=Subquery(latest_prices.values("price")[:1]),
-        previous_price=Subquery(latest_prices.values("price")[1:2]),
-    ).filter(previous_price__isnull=False)
+class PriceHistoryOverviewView(LoginRequiredMixin, TemplateView):
+    template_name = "products/price_history_overview.html"
 
-    for p in products_with_prices:
-        if p.current_price > p.previous_price:  # type: ignore
-            percentual = ((p.current_price - p.previous_price) / p.previous_price) * 100  # type: ignore
-            if percentual > maior_aumento["percentual"]:
-                maior_aumento["percentual"] = percentual
-                maior_aumento["produto"] = p
-        elif p.current_price < p.previous_price:  # type: ignore
-            percentual = ((p.previous_price - p.current_price) / p.previous_price) * 100  # type: ignore
-            if percentual > maior_reducao["percentual"]:
-                maior_reducao["percentual"] = percentual
-                maior_reducao["produto"] = p
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user_products = Product.objects.filter(user=self.request.user).prefetch_related("price_history")
 
-    # Média de alterações por produto
-    total_produtos = user_products.count()
-    media_alteracoes = total_alteracoes / total_produtos if total_produtos > 0 else 0
+        q = self.request.GET.get("q", "")
+        if q:
+            user_products = user_products.filter(models.Q(name__icontains=q) | models.Q(description__icontains=q))
 
-    # Produtos com seus históricos (para lista principal)
-    produtos_com_historico = []
-    for product in user_products:
-        # Ordenação em Python para aproveitar o prefetch_related e evitar N+1 queries
-        history = sorted(product.price_history.all(), key=lambda x: x.changed_at, reverse=True)
+        category_id = self.request.GET.get("category")
+        if category_id:
+            user_products = user_products.filter(categories__id=category_id)
 
-        if not history:
-            continue
+        total_alteracoes = PriceHistory.objects.filter(product__in=user_products).count()
 
-        # Dados para o Sparkline (últimos 10 preços, ordem cronológica)
-        history_prices = [float(h.price) for h in history[:10]]
-        history_prices.reverse()  # Reverte para o gráfico (do mais antigo para o mais novo)
+        produto_mais_alteracoes_obj = user_products.annotate(num_alteracoes=Count("price_history")).order_by("-num_alteracoes").first()
+        produto_mais_alteracoes = {
+            "produto": produto_mais_alteracoes_obj,
+            "count": getattr(produto_mais_alteracoes_obj, "num_alteracoes", 0) if produto_mais_alteracoes_obj else 0,
+        }
 
-        # Determinar tendência
-        latest = history[0]
-        previous = history[1] if len(history) > 1 else None
-        trend = "stable"
+        maior_aumento = {"produto": None, "percentual": 0}
+        maior_reducao = {"produto": None, "percentual": 0}
 
-        if previous:
-            if latest.price > previous.price:
-                trend = "up"
-            elif latest.price < previous.price:
-                trend = "down"
+        latest_prices = PriceHistory.objects.filter(product=OuterRef("pk")).order_by("-changed_at")
+        products_with_prices = user_products.annotate(
+            current_price=Subquery(latest_prices.values("price")[:1]),
+            previous_price=Subquery(latest_prices.values("price")[1:2]),
+        ).filter(previous_price__isnull=False)
 
-        produtos_com_historico.append(
-            {
-                "produto": product,
-                "historico_precos": history_prices,
-                "total_alteracoes": len(history),
-                "ultima_alteracao": latest,
-                "trend": trend,
-            }
+        for p in products_with_prices:
+            current_price = getattr(p, "current_price", 0)
+            previous_price = getattr(p, "previous_price", 0)
+
+            if current_price > previous_price:
+                percentual = ((current_price - previous_price) / previous_price) * 100
+                if percentual > maior_aumento["percentual"]:
+                    maior_aumento["percentual"] = percentual
+                    maior_aumento["produto"] = p  # type: ignore
+            elif current_price < previous_price:
+                percentual = ((previous_price - current_price) / previous_price) * 100
+                if percentual > maior_reducao["percentual"]:
+                    maior_reducao["percentual"] = percentual
+                    maior_reducao["produto"] = p  # type: ignore
+
+        total_produtos = user_products.count()
+        media_alteracoes = total_alteracoes / total_produtos if total_produtos > 0 else 0
+
+        produtos_com_historico = []
+        for product in user_products:
+            history = sorted(cast("Any", product).price_history.all(), key=lambda x: x.changed_at, reverse=True)
+            if not history:
+                continue
+
+            history_prices = [float(h.price) for h in history[:10]]
+            history_prices.reverse()
+
+            latest = history[0]
+            previous = history[1] if len(history) > 1 else None
+            trend = "stable"
+
+            if previous:
+                if latest.price > previous.price:
+                    trend = "up"
+                elif latest.price < previous.price:
+                    trend = "down"
+
+            produtos_com_historico.append(
+                {
+                    "produto": product,
+                    "historico_precos": history_prices,
+                    "total_alteracoes": len(history),
+                    "ultima_alteracao": latest,
+                    "trend": trend,
+                }
+            )
+
+        produtos_com_historico.sort(
+            key=lambda x: x["ultima_alteracao"].changed_at if x["ultima_alteracao"] else datetime.min,
+            reverse=True,
         )
 
-    # Ordenar por data da última alteração
-    produtos_com_historico.sort(
-        key=lambda x: x["ultima_alteracao"].changed_at if x["ultima_alteracao"] else datetime.min,
-        reverse=True,
-    )
-
-    context = {
-        "total_alteracoes": total_alteracoes,
-        "produto_mais_alteracoes": produto_mais_alteracoes,
-        "maior_aumento": maior_aumento,
-        "maior_reducao": maior_reducao,
-        "media_alteracoes": media_alteracoes,
-        "produtos_com_historico": produtos_com_historico,
-        "categorias": Category.objects.filter(user=request.user).distinct(),
-        "selected_category": int(category_id) if category_id else "",
-        "q": q,
-    }
-
-    return render(request, "products/price_history_overview.html", context)
+        context.update(
+            {
+                "total_alteracoes": total_alteracoes,
+                "produto_mais_alteracoes": produto_mais_alteracoes,
+                "maior_aumento": maior_aumento,
+                "maior_reducao": maior_reducao,
+                "media_alteracoes": media_alteracoes,
+                "produtos_com_historico": produtos_com_historico,
+                "categorias": Category.objects.filter(user=self.request.user).distinct(),
+                "selected_category": int(category_id) if category_id else "",
+                "q": q,
+            }
+        )
+        return context
 
 
-def product_movement_view(request, pk):
-    product = get_object_or_404(Product, pk=pk)
+class ProductMovementView(DetailView):
+    model = Product
+    template_name = "products/product_movement.html"
+    context_object_name = "product"
+    object: Product
 
-    # Verificação de permissão
-    if not product.is_public:
-        if not request.user.is_authenticated or product.user != request.user:
-            messages.error(request, "Você não tem permissão para ver este produto.")
-            return redirect("account_login")
+    def dispatch(self, request, *args, **kwargs):
+        self.object = cast("Product", self.get_object())
+        if not getattr(self.object, "is_public", False):
+            if not request.user.is_authenticated or getattr(self.object, "user", None) != request.user:
+                messages.error(request, "Você não tem permissão para ver este produto.")
+                return redirect("account_login")
+        return super().dispatch(request, *args, **kwargs)
 
-    movements = product.movements.all()
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        movements = cast("Any", self.object).movements.all()
 
-    # Filtros de data
-    data_inicio = request.GET.get("data_inicio")
-    data_fim = request.GET.get("data_fim")
-    tipo = request.GET.get("tipo")
+        data_inicio = self.request.GET.get("data_inicio")
+        data_fim = self.request.GET.get("data_fim")
+        tipo = self.request.GET.get("tipo")
 
-    if data_inicio:
-        try:
-            data_inicio_obj = timezone.make_aware(datetime.strptime(data_inicio, "%Y-%m-%d"))
-            movements = movements.filter(moved_at__gte=data_inicio_obj)
-        except ValueError:
-            pass
+        if data_inicio:
+            try:
+                data_inicio_obj = timezone.make_aware(datetime.strptime(data_inicio, "%Y-%m-%d"))
+                movements = movements.filter(moved_at__gte=data_inicio_obj)
+            except ValueError:
+                pass
 
-    if data_fim:
-        try:
-            data_fim_obj = timezone.make_aware(datetime.strptime(data_fim, "%Y-%m-%d")) + timedelta(days=1)
-            movements = movements.filter(moved_at__lt=data_fim_obj)
-        except ValueError:
-            pass
+        if data_fim:
+            try:
+                data_fim_obj = timezone.make_aware(datetime.strptime(data_fim, "%Y-%m-%d")) + timedelta(days=1)
+                movements = movements.filter(moved_at__lt=data_fim_obj)
+            except ValueError:
+                pass
 
-    if tipo in ["IN", "OUT"]:
-        movements = movements.filter(type=tipo)
+        if tipo in ["IN", "OUT"]:
+            movements = movements.filter(type=tipo)
 
-    view_mode = "table"
-    if request.user.is_authenticated:
-        view_mode = request.user.profile.view_preferences.get("product_movement", "table")
-    else:
-        view_mode = request.session.get("view_mode_product_movement", "table")
+        if self.request.user.is_authenticated:
+            view_mode = cast("Any", getattr(cast("Any", self.request.user), "profile", None)).view_preferences.get("product_movement", "table")
+        else:
+            view_mode = self.request.session.get("view_mode_product_movement", "table")
 
-    return render(
-        request,
-        "products/product_movement.html",
-        {
-            "product": product,
-            "movements": movements,
-            "data_inicio": data_inicio,
-            "data_fim": data_fim,
-            "tipo": tipo,
-            "view_mode": view_mode,
-            "view_context": "product_movement",
-        },
-    )
-
-
-def product_movement_overview(request):
-    """Dashboard consolidado de movimentações de todos os produtos"""
-    if not request.user.is_authenticated:
-        messages.error(request, "Você precisa estar logado para acessar esta página.")
-        return redirect("account_login")
-
-    # Base Queryset
-    user_products = Product.objects.filter(user=request.user)
-
-    # Filtro por Termo de Busca (q)
-    q = request.GET.get("q", "")
-    if q:
-        user_products = user_products.filter(models.Q(name__icontains=q) | models.Q(description__icontains=q))
-
-    # Filtro por Categoria
-    category_id = request.GET.get("category")
-    if category_id:
-        user_products = user_products.filter(categories__id=category_id)
-
-    movements = ProductMovement.objects.filter(product__in=user_products).select_related("product")
-
-    # Filtros de data e tipo
-    data_inicio = request.GET.get("data_inicio")
-    data_fim = request.GET.get("data_fim")
-    tipo = request.GET.get("tipo")
-
-    if data_inicio:
-        try:
-            data_inicio_obj = timezone.make_aware(datetime.strptime(data_inicio, "%Y-%m-%d"))
-            movements = movements.filter(moved_at__gte=data_inicio_obj)
-        except ValueError:
-            pass
-
-    if data_fim:
-        try:
-            data_fim_obj = timezone.make_aware(datetime.strptime(data_fim, "%Y-%m-%d")) + timedelta(days=1)
-            movements = movements.filter(moved_at__lt=data_fim_obj)
-        except ValueError:
-            pass
-
-    if tipo in ["IN", "OUT"]:
-        movements = movements.filter(type=tipo)
-
-    # Estatísticas
-    from django.db.models import Sum
-
-    total_in = movements.filter(type="IN").aggregate(total=Sum("quantity"))["total"] or 0
-    total_out = movements.filter(type="OUT").aggregate(total=Sum("quantity"))["total"] or 0
-
-    context = {
-        "movements": movements,
-        "total_in": total_in,
-        "total_out": total_out,
-        "q": q,
-        "selected_category": int(category_id) if category_id else "",
-        "categorias": Category.objects.filter(user=request.user).distinct(),
-        "data_inicio": data_inicio,
-        "data_fim": data_fim,
-        "tipo": tipo,
-        "view_mode": request.user.profile.view_preferences.get("movement_overview", "table"),
-        "view_context": "movement_overview",
-    }
-
-    return render(request, "products/product_movement_overview.html", context)
+        context.update(
+            {
+                "movements": movements,
+                "data_inicio": data_inicio,
+                "data_fim": data_fim,
+                "tipo": tipo,
+                "view_mode": view_mode,
+                "view_context": "product_movement",
+            }
+        )
+        return context
 
 
-@login_required
-def movement_select_product(request, type):
-    """Tela para buscar e selecionar um produto para realizar entrada ou saída"""
-    if type not in ["IN", "OUT"]:
-        return redirect("product_movement_overview")
+class ProductMovementOverviewView(LoginRequiredMixin, ListView):
+    model = ProductMovement
+    template_name = "products/product_movement_overview.html"
+    context_object_name = "movements"
 
-    # Base Queryset
-    products = Product.objects.filter(user=request.user)
+    def get_queryset(self):
+        user_products = Product.objects.filter(user=self.request.user)
 
-    # Filtros
-    q = request.GET.get("q", "")
-    category_id = request.GET.get("category", "")
-    status = request.GET.get("status", "")
+        self.q = self.request.GET.get("q", "")
+        if self.q:
+            user_products = user_products.filter(models.Q(name__icontains=self.q) | models.Q(description__icontains=self.q))
 
-    if q:
-        products = products.filter(Q(name__icontains=q) | Q(description__icontains=q))
-    if category_id:
-        products = products.filter(categories__id=category_id)
-    if status == "public":
-        products = products.filter(is_public=True)
-    elif status == "private":
-        products = products.filter(is_public=False)
+        self.category_id = self.request.GET.get("category")
+        if self.category_id:
+            user_products = user_products.filter(categories__id=self.category_id)
 
-    products = products.distinct().order_by("name")
+        movements = ProductMovement.objects.filter(product__in=user_products).select_related("product")
 
-    context = {
-        "products": products,
-        "type": type,
-        "type_display": "Entrada" if type == "IN" else "Saída",
-        "categories": Category.objects.filter(user=request.user),
-        "q": q,
-        "category_id": category_id,
-        "status": status,
-        "title": f"Selecionar Produto para {('Entrada' if type == 'IN' else 'Saída')}",
-        "view_mode": request.user.profile.view_preferences.get("movement_select", "grid"),
-        "view_context": "movement_select",
-    }
-    return render(request, "products/movement_select_product.html", context)
+        self.data_inicio = self.request.GET.get("data_inicio")
+        self.data_fim = self.request.GET.get("data_fim")
+        self.tipo = self.request.GET.get("tipo")
+
+        if self.data_inicio:
+            try:
+                data_inicio_obj = timezone.make_aware(datetime.strptime(self.data_inicio, "%Y-%m-%d"))
+                movements = movements.filter(moved_at__gte=data_inicio_obj)
+            except ValueError:
+                pass
+
+        if self.data_fim:
+            try:
+                data_fim_obj = timezone.make_aware(datetime.strptime(self.data_fim, "%Y-%m-%d")) + timedelta(days=1)
+                movements = movements.filter(moved_at__lt=data_fim_obj)
+            except ValueError:
+                pass
+
+        if self.tipo in ["IN", "OUT"]:
+            movements = movements.filter(type=self.tipo)
+
+        return movements
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        movements = self.get_queryset()
+
+        total_in = movements.filter(type="IN").aggregate(total=Sum("quantity"))["total"] or 0
+        total_out = movements.filter(type="OUT").aggregate(total=Sum("quantity"))["total"] or 0
+
+        context.update(
+            {
+                "total_in": total_in,
+                "total_out": total_out,
+                "q": self.q,
+                "selected_category": int(self.category_id) if self.category_id else "",
+                "categorias": Category.objects.filter(user=self.request.user).distinct(),
+                "data_inicio": self.data_inicio,
+                "data_fim": self.data_fim,
+                "tipo": self.tipo,
+                "view_mode": cast("Any", getattr(cast("Any", self.request.user), "profile", None)).view_preferences.get("movement_overview", "table"),
+                "view_context": "movement_overview",
+            }
+        )
+        return context
 
 
-@login_required
-def perform_movement(request, pk, type):
-    """Tela para registrar a quantidade e motivo da movimentação"""
-    product = get_object_or_404(Product, pk=pk, user=request.user)
-    if type not in ["IN", "OUT"]:
-        return redirect("product_movement_overview")
+class MovementSelectProductView(LoginRequiredMixin, ListView):
+    model = Product
+    template_name = "products/movement_select_product.html"
+    context_object_name = "products"
 
-    if request.method == "POST":
-        form = MovementForm(request.POST)
-        if form.is_valid():
-            movement = form.save(commit=False)
-            movement.product = product
-            movement.type = type
-
-            # Atualiza o estoque do produto
-            if type == "IN":
-                product.stock += movement.quantity
-            else:
-                if product.stock < movement.quantity:
-                    messages.error(
-                        request,
-                        f"Estoque insuficiente para realizar esta saída. Estoque atual: {product.stock}",
-                    )
-                    return render(
-                        request,
-                        "products/movement_form.html",
-                        {
-                            "form": form,
-                            "product": product,
-                            "type": type,
-                            "type_display": "Entrada" if type == "IN" else "Saída",
-                        },
-                    )
-                product.stock -= movement.quantity
-
-            movement.save()
-            product.save()
-
-            messages.success(
-                request,
-                f"{('Entrada' if type == 'IN' else 'Saída')} realizada com sucesso para {product.name}!",
-            )
+    def dispatch(self, request, *args, **kwargs):
+        self.type = kwargs.get("type")
+        if self.type not in ["IN", "OUT"]:
             return redirect("product_movement_overview")
-    else:
-        form = MovementForm()
+        return super().dispatch(request, *args, **kwargs)
 
-    return render(
-        request,
-        "products/movement_form.html",
-        {
-            "form": form,
-            "product": product,
-            "type": type,
-            "type_display": "Entrada" if type == "IN" else "Saída",
-        },
-    )
+    def get_queryset(self):
+        products = cast("Any", Product.objects).for_user(self.request.user)
+
+        self.q = self.request.GET.get("q", "")
+        self.category_id = self.request.GET.get("category", "")
+        self.status = self.request.GET.get("status", "")
+
+        products = apply_product_filters(products, q=self.q, category_id=self.category_id, status=self.status)
+        return products.distinct().order_by("name")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(
+            {
+                "type": self.type,
+                "type_display": "Entrada" if self.type == "IN" else "Saída",
+                "categories": Category.objects.filter(user=self.request.user),
+                "q": self.q,
+                "category_id": self.category_id,
+                "status": self.status,
+                "title": f"Selecionar Produto para {('Entrada' if self.type == 'IN' else 'Saída')}",
+                "view_mode": cast("Any", getattr(cast("Any", self.request.user), "profile", None)).view_preferences.get("movement_select", "grid"),
+                "view_context": "movement_select",
+            }
+        )
+        return context
+
+
+class PerformMovementView(LoginRequiredMixin, CreateView):
+    model = ProductMovement
+    form_class = MovementForm
+    template_name = "products/movement_form.html"
+    success_url = reverse_lazy("product_movement_overview")
+
+    def dispatch(self, request, *args, **kwargs):
+        self.product_obj = get_object_or_404(Product, pk=kwargs.get("pk"), user=request.user)
+        self.type = kwargs.get("type")
+        if self.type not in ["IN", "OUT"]:
+            return redirect("product_movement_overview")
+        return super().dispatch(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        movement = form.save(commit=False)
+        movement.product = self.product_obj
+        movement.type = self.type
+
+        if self.type == "IN":
+            self.product_obj.stock += movement.quantity
+        else:
+            if self.product_obj.stock < movement.quantity:
+                messages.error(
+                    self.request,
+                    f"Estoque insuficiente para realizar esta saída. Estoque atual: {self.product_obj.stock}",
+                )
+                return self.form_invalid(form)
+            self.product_obj.stock -= movement.quantity
+
+        movement.save()
+        self.product_obj.save()
+
+        messages.success(
+            self.request,
+            f"{('Entrada' if self.type == 'IN' else 'Saída')} realizada com sucesso para {self.product_obj.name}!",
+        )
+        return cast("Any", super()).form_valid(form)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(
+            {
+                "product": self.product_obj,
+                "type": self.type,
+                "type_display": "Entrada" if self.type == "IN" else "Saída",
+            }
+        )
+        return context
 
 
 # --- Category Views ---
-@login_required
-def category_list(request):
-    # 1. Captura os parâmetros da URL (com valores padrão)
-    sort_field = request.GET.get("sort", "name")
-    sort_direction = request.GET.get("dir", "asc")
+class CategoryListView(LoginRequiredMixin, ListView):
+    model = Category
+    template_name = "products/category_list.html"
+    context_object_name = "categories"
 
-    # 2. Mapeia os nomes das colunas do HTML para os campos do Model
-    # Isso evita erros se alguém tentar injetar um campo que não existe
-    valid_sort_fields = {
-        "name": "name",
-        "slug": "slug",
-        "color": "color",
-    }
+    def get_queryset(self):
+        sort_field = self.request.GET.get("sort", "name")
+        sort_direction = self.request.GET.get("dir", "asc")
 
-    # Valida o campo, se não for válido, usa 'name'
-    target_field = valid_sort_fields.get(sort_field, "name")
+        valid_sort_fields = {"name": "name", "slug": "slug", "color": "color"}
+        target_field = valid_sort_fields.get(sort_field, "name")
+        prefix = "" if sort_direction == "asc" else "-"
 
-    # 3. Define o prefixo de direção (Django usa '-' para descendente)
-    prefix = "" if sort_direction == "asc" else "-"
+        return Category.objects.filter(user=self.request.user).order_by(f"{prefix}{target_field}")
 
-    # 4. Aplica a ordenação no QuerySet
-    categories = Category.objects.filter(user=request.user).order_by(f"{prefix}{target_field}")
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if self.request.user.is_authenticated:
+            view_mode = cast("Any", getattr(cast("Any", self.request.user), "profile", None)).view_preferences.get("category_list", "grid")
+        else:
+            view_mode = self.request.session.get("view_mode_category_list", "grid")
 
-    # Determine view mode
-    view_mode = "grid"
-    if request.user.is_authenticated:
-        view_mode = request.user.profile.view_preferences.get("category_list", "grid")
-    else:
-        view_mode = request.session.get("view_mode_category_list", "grid")
-
-    return render(
-        request,
-        "products/category_list.html",
-        {
-            "categories": categories,
-            "title": "Categorias",
-            "view_mode": view_mode,
-            "view_context": "category_list",
-        },
-    )
+        context.update(
+            {
+                "title": "Categorias",
+                "view_mode": view_mode,
+                "view_context": "category_list",
+            }
+        )
+        return context
 
 
-@login_required
-def category_create(request):
-    if request.method == "POST":
-        form = CategoryForm(request.POST, user=request.user)
-        if form.is_valid():
-            category = form.save(commit=False)
-            category.user = request.user
-            category.save()
-            messages.success(request, "Categoria criada com sucesso!")
-            return redirect("category_list")
-    else:
-        form = CategoryForm(user=request.user)
-    return render(
-        request,
-        "products/category_form.html",
-        {"form": form, "title": "Nova Categoria"},
-    )
+class CategoryCreateView(LoginRequiredMixin, CreateView):
+    model = Category
+    form_class = CategoryForm
+    template_name = "products/category_form.html"
+    success_url = reverse_lazy("category_list")
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
+
+    def form_valid(self, form):
+        category = form.save(commit=False)
+        category.user = self.request.user
+        category.save()
+        messages.success(self.request, "Categoria criada com sucesso!")
+        return cast("Any", super()).form_valid(form)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["title"] = "Nova Categoria"
+        return context
 
 
-@login_required
-def category_update(request, pk):
-    category = get_object_or_404(Category, pk=pk, user=request.user)
-    if request.method == "POST":
-        form = CategoryForm(request.POST, instance=category, user=request.user)
-        if form.is_valid():
-            form.save()
-            messages.success(request, "Categoria atualizada com sucesso!")
-            return redirect("category_list")
-    else:
-        form = CategoryForm(instance=category, user=request.user)
-    return render(
-        request,
-        "products/category_form.html",
-        {"form": form, "title": "Editar Categoria", "category": category},
-    )
+class CategoryUpdateView(LoginRequiredMixin, UpdateView):
+    model = Category
+    form_class = CategoryForm
+    template_name = "products/category_form.html"
+    success_url = reverse_lazy("category_list")
+
+    def get_queryset(self):
+        return Category.objects.filter(user=self.request.user)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
+
+    def form_valid(self, form):
+        response = cast("Any", super()).form_valid(form)
+        messages.success(self.request, "Categoria atualizada com sucesso!")
+        return response
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["title"] = "Editar Categoria"
+        return context
 
 
-@login_required
-def category_delete(request, pk):
-    category = get_object_or_404(Category, pk=pk, user=request.user)
-    if request.method == "POST":
-        category.delete()
-        messages.success(request, "Categoria removida com sucesso.")
-        return redirect("category_list")
-    return render(request, "products/category_confirm_delete.html", {"category": category})
+class CategoryDeleteView(LoginRequiredMixin, DeleteView):
+    model = Category
+    template_name = "products/category_confirm_delete.html"
+    success_url = reverse_lazy("category_list")
+
+    def get_queryset(self):
+        return Category.objects.filter(user=self.request.user)
+
+    def form_valid(self, form):
+        response = cast("Any", super()).form_valid(form)
+        messages.success(self.request, "Categoria removida com sucesso.")
+        return response
 
 
-@login_required
-def category_duplicate(request, pk):
-    original_category = get_object_or_404(Category, pk=pk, user=request.user)
-    if request.method == "POST":
-        form = CategoryForm(request.POST, user=request.user)
-        if form.is_valid():
-            category = form.save(commit=False)
-            category.user = request.user
-            category.save()
-            messages.success(request, "Categoria duplicada com sucesso!")
-            return redirect("category_list")
-    else:
-        # Preenche os dados iniciais, mas limpa o slug para forçar um novo ou alteração
-        initial_data = {
-            "name": f"{original_category.name} (Copy)",
-            "description": original_category.description,
-            "color": original_category.color,
-            "slug": f"{original_category.slug}-copy",
-        }
-        form = CategoryForm(initial=initial_data, user=request.user)
+class CategoryDuplicateView(LoginRequiredMixin, FormView):
+    form_class = CategoryForm
+    template_name = "products/category_form.html"
+    success_url = reverse_lazy("category_list")
 
-    return render(
-        request,
-        "products/category_form.html",
-        {"form": form, "title": "Duplicar Categoria", "is_duplicate": True},
-    )
+    def dispatch(self, request, *args, **kwargs):
+        self.original_category = get_object_or_404(Category, pk=kwargs.get("pk"), user=request.user)
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_initial(self):
+        initial = super().get_initial()
+        initial.update(
+            {
+                "name": f"{self.original_category.name} (Copy)",
+                "description": self.original_category.description,
+                "color": self.original_category.color,
+                "slug": f"{self.original_category.slug}-copy",
+            }
+        )
+        return initial
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
+
+    def form_valid(self, form):
+        category = form.save(commit=False)
+        category.user = self.request.user
+        category.save()
+        messages.success(self.request, "Categoria duplicada com sucesso!")
+        return cast("Any", super()).form_valid(form)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["title"] = "Duplicar Categoria"
+        context["is_duplicate"] = True
+        return context
 
 
 # --- Account & System Views ---
-@login_required
-def profile_view(request):
-    if request.method == "POST":
+class ProfileView(LoginRequiredMixin, TemplateView):
+    template_name = "account/profile.html"
+
+    def post(self, request, *args, **kwargs):
         username = request.POST.get("username")
         email = request.POST.get("email")
         user = request.user
         user.username = username
         user.email = email
-        user.save()
+        cast("Any", user).save()
         messages.success(request, "Perfil atualizado com sucesso!")
         return redirect("profile")
-    return render(request, "account/profile.html")
 
 
-@login_required
-def delete_account_view(request):
-    if request.method == "POST":
+class DeleteAccountView(LoginRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
         password = request.POST.get("password")
         user = request.user
 
-        # Verify password
         from django.contrib.auth import authenticate
 
-        authenticated_user = authenticate(username=user.username, password=password)
+        authenticated_user = authenticate(username=getattr(user, "username", ""), password=password)
 
         if authenticated_user is not None:
-            user.delete()
+            cast("Any", user).delete()
             messages.success(request, "Sua conta foi excluída permanentemente.")
             return redirect("account_login")
         else:
             messages.error(request, "Falha na exclusão: A senha informada está incorreta.")
             return redirect("profile")
 
-    return redirect("profile")
+
+class UserPublicCatalogView(ListView):
+    model = Product
+    template_name = "products/product_list.html"
+    context_object_name = "products"
+
+    def dispatch(self, request, *args, **kwargs):
+        self.catalog_user = get_object_or_404(User, username=kwargs.get("username"))
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        products = cast("Any", Product.objects).for_user(self.catalog_user).filter(is_public=True)
+
+        self.q = self.request.GET.get("q")
+        self.category_id = self.request.GET.get("category")
+        self.min_price = self.request.GET.get("min_price")
+        self.max_price = self.request.GET.get("max_price")
+        self.min_stock = self.request.GET.get("min_stock")
+        self.max_stock = self.request.GET.get("max_stock")
+
+        products = apply_product_filters(
+            products,
+            q=self.q,
+            category_id=self.category_id,
+            min_price=self.min_price,
+            max_price=self.max_price,
+            min_stock=self.min_stock,
+            max_stock=self.max_stock,
+        )
+
+        return products.distinct().order_by("-created_at")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        products = self.get_queryset()
+
+        stats = {
+            "total_count": products.count(),
+            "total_stock": products.aggregate(Sum("stock"))["stock__sum"] or 0,
+            "total_value": products.annotate(val=ExpressionWrapper(F("price") * F("stock"), output_field=DecimalField())).aggregate(total=Sum("val"))[
+                "total"
+            ]
+            or 0,
+        }
+
+        if self.request.user.is_authenticated:
+            view_mode = cast("Any", getattr(cast("Any", self.request.user), "profile", None)).view_preferences.get("user_public_catalog", "grid")
+        else:
+            view_mode = self.request.session.get("view_mode_user_public_catalog", "grid")
+
+        context.update(
+            {
+                "categories": Category.objects.filter(user=self.catalog_user),
+                "stats": stats,
+                "title": f"Catálogo de {self.catalog_user.username}",
+                "is_public_view": True,
+                "q": self.q,
+                "category_id": self.category_id,
+                "min_price": self.min_price,
+                "max_price": self.max_price,
+                "min_stock": self.min_stock,
+                "max_stock": self.max_stock,
+                "view_mode": view_mode,
+                "view_context": "user_public_catalog",
+            }
+        )
+        return context
 
 
-def user_public_catalog(request, username):
-    catalog_user = get_object_or_404(User, username=username)
-    products = Product.objects.filter(user=catalog_user, is_public=True)
+class PublicProductListView(ListView):
+    model = Product
+    template_name = "products/product_list.html"
+    context_object_name = "products"
 
-    q = request.GET.get("q")
-    if q:
-        products = products.filter(name__icontains=q) | products.filter(description__icontains=q)
+    def get_queryset(self):
+        self.q = self.request.GET.get("q", "")
+        self.category_id = self.request.GET.get("category", "")
+        self.min_price = self.request.GET.get("min_price", "")
+        self.max_price = self.request.GET.get("max_price", "")
+        self.min_stock = self.request.GET.get("min_stock", "")
+        self.max_stock = self.request.GET.get("max_stock", "")
 
-    category_id = request.GET.get("category")
-    if category_id:
-        products = products.filter(categories=category_id)
+        sort_field = self.request.GET.get("sort", "name")
+        sort_direction = self.request.GET.get("dir", "asc")
 
-    min_price = request.GET.get("min_price")
-    max_price = request.GET.get("max_price")
-    if min_price:
-        products = products.filter(price__gte=min_price)
-    if max_price:
-        products = products.filter(price__lte=max_price)
+        products = Product.objects.filter(is_public=True)
 
-    min_stock = request.GET.get("min_stock")
-    max_stock = request.GET.get("max_stock")
-    if min_stock:
-        products = products.filter(stock__gte=min_stock)
-    if max_stock:
-        products = products.filter(stock__lte=max_stock)
+        products = apply_product_filters(
+            products,
+            q=self.q,
+            category_id=self.category_id,
+            min_price=self.min_price,
+            max_price=self.max_price,
+            min_stock=self.min_stock,
+            max_stock=self.max_stock,
+        )
 
-    products = products.distinct().order_by("-created_at")
+        valid_fields = {"name": "name", "price": "price", "stock": "stock", "user": "user__username"}
+        products = sort_queryset(products, sort_field, sort_direction, valid_fields, default_sort="name", category_sort_key="categories__name")
 
-    stats = {
-        "total_count": products.count(),
-        "total_stock": products.aggregate(Sum("stock"))["stock__sum"] or 0,
-        "total_value": products.annotate(
-            val=ExpressionWrapper(F("price") * F("stock"), output_field=DecimalField())
-        ).aggregate(total=Sum("val"))["total"]
-        or 0,
-    }
+        return products.distinct()
 
-    # Determine view mode
-    view_mode = "grid"
-    if request.user.is_authenticated:
-        view_mode = request.user.profile.view_preferences.get("user_public_catalog", "grid")
-    else:
-        view_mode = request.session.get("view_mode_user_public_catalog", "grid")
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        products = self.get_queryset()
 
-    return render(
-        request,
-        "products/product_list.html",
-        {
-            "products": products,
-            "categories": Category.objects.filter(user=catalog_user),
-            "stats": stats,
-            "title": f"Catálogo de {catalog_user.username}",
-            "is_public_view": True,
-            "q": q,
-            "category_id": request.GET.get("category", ""),
-            "min_price": min_price,
-            "max_price": max_price,
-            "min_stock": min_stock,
-            "max_stock": max_stock,
-            "view_mode": view_mode,
-            "view_context": "user_public_catalog",
-        },
-    )
+        stats = {
+            "total_count": products.count(),
+            "total_stock": products.aggregate(Sum("stock"))["stock__sum"] or 0,
+            "total_value": products.annotate(val=ExpressionWrapper(F("price") * F("stock"), output_field=DecimalField())).aggregate(total=Sum("val"))[
+                "total"
+            ]
+            or 0,
+        }
 
+        if self.request.user.is_authenticated:
+            view_mode = cast("Any", getattr(cast("Any", self.request.user), "profile", None)).view_preferences.get("public_product_list", "grid")
+        else:
+            view_mode = self.request.session.get("view_mode_public_product_list", "grid")
 
-def public_product_list(request):
-    # Captura de filtros
-    q = request.GET.get("q", "")
-    category_id = request.GET.get("category", "")
-    min_price = request.GET.get("min_price", "")
-    max_price = request.GET.get("max_price", "")
-    min_stock = request.GET.get("min_stock", "")
-    max_stock = request.GET.get("max_stock", "")
-
-    # Parâmetros de Ordenação
-    sort_field = request.GET.get("sort", "name")
-    sort_direction = request.GET.get("dir", "asc")
-    prefix = "" if sort_direction == "asc" else "-"
-
-    # QuerySet Inicial
-    products = Product.objects.filter(is_public=True)
-
-    # Filtros
-    if q:
-        products = products.filter(Q(name__icontains=q) | Q(description__icontains=q))
-    if category_id:
-        products = products.filter(categories__id=category_id)
-    if min_price:
-        products = products.filter(price__gte=min_price)
-    if max_price:
-        products = products.filter(price__lte=max_price)
-    if min_stock:
-        products = products.filter(stock__gte=min_stock)
-    if max_stock:
-        products = products.filter(stock__lte=max_stock)
-
-    # Ordenação com Annotate
-    if sort_field == "category":
-        products = products.annotate(sort_key=Min("categories__name")).order_by(f"{prefix}sort_key")
-    elif sort_field == "user":
-        products = products.order_by(f"{prefix}user__username")
-    else:
-        valid_fields = {"name": "name", "price": "price", "stock": "stock"}
-        target = valid_fields.get(sort_field, "name")
-        products = products.order_by(f"{prefix}{target}")
-
-    # Distinct final
-    products = products.distinct()
-
-    # Estatísticas
-    stats = {
-        "total_count": products.count(),
-        "total_stock": products.aggregate(Sum("stock"))["stock__sum"] or 0,
-        "total_value": products.annotate(
-            val=ExpressionWrapper(F("price") * F("stock"), output_field=DecimalField())
-        ).aggregate(total=Sum("val"))["total"]
-        or 0,
-    }
-
-    # Determine view mode
-    view_mode = "grid"
-    if request.user.is_authenticated:
-        view_mode = request.user.profile.view_preferences.get("public_product_list", "grid")
-    else:
-        view_mode = request.session.get("view_mode_public_product_list", "grid")
-
-    return render(
-        request,
-        "products/product_list.html",
-        {
-            "products": products,
-            "categories": Category.objects.filter(products__is_public=True).distinct(),
-            "stats": stats,
-            "title": "Catálogo Público",
-            "is_public_view": True,
-            "q": q,
-            "category_id": category_id,
-            "min_price": min_price,
-            "max_price": max_price,
-            "min_stock": min_stock,
-            "max_stock": max_stock,
-            "view_mode": view_mode,
-            "view_context": "public_product_list",
-        },
-    )
+        context.update(
+            {
+                "categories": Category.objects.filter(products__is_public=True).distinct(),
+                "stats": stats,
+                "title": "Catálogo Público",
+                "is_public_view": True,
+                "q": self.q,
+                "category_id": self.category_id,
+                "min_price": self.min_price,
+                "max_price": self.max_price,
+                "min_stock": self.min_stock,
+                "max_stock": self.max_stock,
+                "view_mode": view_mode,
+                "view_context": "public_product_list",
+            }
+        )
+        return context
 
 
-def toggle_theme(request):
-    current_theme = request.session.get("theme", "light")
-    new_theme = "dark" if current_theme == "light" else "light"
-    request.session["theme"] = new_theme
-    if request.user.is_authenticated:
-        profile = request.user.profile
-        if profile.theme != new_theme:
-            profile.theme = new_theme
-            profile.save(update_fields=["theme"])
-    if request.headers.get("HX-Request"):
-        return HttpResponse(status=204)
-    return redirect(request.META.get("HTTP_REFERER", "/"))
+class ToggleThemeView(View):
+    def get(self, request, *args, **kwargs):
+        return self._toggle(request)
+
+    def post(self, request, *args, **kwargs):
+        return self._toggle(request)
+
+    def _toggle(self, request):
+        current_theme = request.session.get("theme", "light")
+        new_theme = "dark" if current_theme == "light" else "light"
+        request.session["theme"] = new_theme
+        if request.user.is_authenticated:
+            profile = getattr(cast("Any", request.user), "profile", None)
+            if profile and getattr(profile, "theme", None) != new_theme:
+                profile.theme = new_theme
+                cast("Any", profile).save(update_fields=["theme"])
+        if request.headers.get("HX-Request"):
+            return HttpResponse(status=204)
+        return redirect(request.META.get("HTTP_REFERER", "/"))
 
 
-@login_required
-def logout_view(request):
-    if request.method == "POST":
+class CustomLogoutView(View):
+    def get(self, request, *args, **kwargs):
+        return self._logout(request)
+
+    def post(self, request, *args, **kwargs):
+        return self._logout(request)
+
+    def _logout(self, request):
         theme = request.session.get("theme", "light")
         auth_logout(request)
         request.session["theme"] = theme
         messages.success(request, "Você saiu do sistema.")
         return redirect("account_login")
-    return redirect("product_list")
 
 
-def set_view_mode(request, context, mode):
-    if mode in ["grid", "table"]:
-        if request.user.is_authenticated:
-            profile = request.user.profile
-            if not isinstance(profile.view_preferences, dict):
-                profile.view_preferences = {}
-            if profile.view_preferences.get(context) != mode:
-                profile.view_preferences[context] = mode
-                profile.save(update_fields=["view_preferences"])
-        else:
-            request.session[f"view_mode_{context}"] = mode
-    if request.headers.get("HX-Request"):
-        return HttpResponse(status=204)
-    return redirect(request.META.get("HTTP_REFERER", "/"))
+class SetViewModeView(View):
+    def get(self, request, context, mode, *args, **kwargs):
+        if mode in ["grid", "table"]:
+            if request.user.is_authenticated:
+                profile = getattr(cast("Any", request.user), "profile", None)
+                if profile:
+                    if not isinstance(getattr(profile, "view_preferences", None), dict):
+                        profile.view_preferences = {}
+                    if cast("Any", profile).view_preferences.get(context) != mode:
+                        cast("Any", profile).view_preferences[context] = mode
+                        cast("Any", profile).save(update_fields=["view_preferences"])
+            else:
+                request.session[f"view_mode_{context}"] = mode
+        if request.headers.get("HX-Request"):
+            return HttpResponse(status=204)
+        return redirect(request.META.get("HTTP_REFERER", "/"))
