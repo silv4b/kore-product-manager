@@ -15,96 +15,190 @@
     <link href="{% static 'css/output.css' %}" rel="stylesheet" />
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://cdn.jsdelivr.net/npm/basecoat-css@0.3.10/dist/js/basecoat.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/basecoat-css@0.3.10/dist/js/sidebar.min.js" defer></script>
 </head>
 
 <body class="bg-background text-foreground antialiased min-h-screen flex flex-col font-sans overflow-y-scroll">
-    <header class="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div class="container mx-auto px-4 h-16 flex justify-between items-center">
-            <a href="{% url 'product_list' %}" class="text-xl font-bold flex items-center gap-2">
-                <i data-lucide="blocks" class="w-6 h-6"></i>
-                Kore
-            </a>
-
-            <nav class="flex gap-1 md:gap-2 items-center">
-                <a href="#"
-                    hx-post="{% url 'toggle_theme' %}"
-                    hx-swap="none"
-                    onclick="toggleTheme()"
-                    class="btn btn-icon btn-ghost bg-transparent border-none shadow-none hover:bg-muted text-foreground"
-                    aria-label="Alternar Tema">
-                    <i data-lucide="sun" class="w-5 h-5 block dark:hidden theme-sun"></i>
-                    <i data-lucide="moon" class="w-5 h-5 hidden dark:block theme-moon"></i>
-                </a>
-
-                {% if user.is_authenticated %}
-                <a href="{% url 'public_product_list' %}"
-                    class="btn btn-ghost btn-sm bg-transparent border-none shadow-none text-foreground hover:bg-muted font-medium flex items-center gap-2 px-2 md:px-3"
-                    title="Catálogo">
-                    <i data-lucide="clipboard" class="w-4 h-4"></i>
-                    <span class="hidden lg:inline">Catálogo</span>
-                </a>
-
-                <a href="{% url 'product_list' %}"
-                    class="btn btn-ghost btn-sm bg-transparent border-none shadow-none text-foreground hover:bg-muted font-medium flex items-center gap-2 px-2 md:px-3"
-                    title="Produtos">
-                    <i data-lucide="package-2" class="w-4 h-4"></i>
-                    <span class="hidden lg:inline">Produtos</span>
-                </a>
-
-                <a href="{% url 'category_list' %}"
-                    class="btn btn-ghost btn-sm bg-transparent border-none shadow-none text-foreground hover:bg-muted font-medium flex items-center gap-2 px-2 md:px-3"
-                    title="Categorias">
-                    <i data-lucide="tag" class="w-4 h-4"></i>
-                    <span class="hidden lg:inline">Categorias</span>
-                </a>
-
-                <a href="{% url 'price_history_overview' %}"
-                    class="btn btn-ghost btn-sm bg-transparent border-none shadow-none text-foreground hover:bg-muted font-medium flex items-center gap-2 px-2 md:px-3"
-                    title="Histórico de Preços">
-                    <i data-lucide="history" class="w-4 h-4"></i>
-                    <span class="hidden lg:inline">Preços</span>
-                </a>
-
-                <a href="{% url 'product_movement_overview' %}"
-                    class="btn btn-ghost btn-sm bg-transparent border-none shadow-none text-foreground hover:bg-muted font-medium flex items-center gap-2 px-2 md:px-3"
-                    title="Movimentações de Estoque">
-                    <i data-lucide="package-search" class="w-4 h-4 text-primary"></i>
-                    <span class="hidden lg:inline">Estoque</span>
-                </a>
-
-                <a href="{% url 'partner_list' %}"
-                    class="btn btn-ghost btn-sm bg-transparent border-none shadow-none text-foreground hover:bg-muted font-medium flex items-center gap-2 px-2 md:px-3"
-                    title="Clientes e Fornecedores">
-                    <i data-lucide="users" class="w-4 h-4"></i>
-                    <span class="hidden lg:inline">Parceiros</span>
-                </a>
-
-                <a href="{% url 'profile' %}"
-                    class="flex items-center gap-2 px-2 md:px-3 py-1.5 border-l border-border ml-1 hover:bg-muted/50 transition-colors rounded-sm h-9">
-                    <div
-                        class="w-7 h-7 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                        <i data-lucide="user" class="w-3.5 h-3.5"></i>
+    {% if user.is_authenticated %}
+    <!-- Basecoat Sidebar component -->
+    <aside class="sidebar" data-side="left" id="sidebar" data-initial-open="true" data-initial-mobile-open="false">
+        <nav aria-label="Navegação Principal">
+            <header class="h-14 border-b border-sidebar-border flex items-center justify-between px-4">
+                <a href="{% url 'product_list' %}" class="flex items-center gap-2 font-bold text-lg">
+                    <div class="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center text-secondary-foreground">
+                        <i data-lucide="blocks" class="w-5 h-5"></i>
                     </div>
-                    <div class="hidden sm:flex flex-col text-left">
-                        <span class="text-[11px] font-bold leading-none">{{ user.username }}</span>
-                        <span class="text-[9px] text-muted-foreground truncate">{{ user.email }}</span>
-                    </div>
+                    <span>Kore</span>
                 </a>
 
-                <button onclick="toggleLogoutModal(true)"
-                    class="btn btn-icon btn-ghost btn-sm bg-transparent border-none shadow-none text-foreground hover:bg-muted"
-                    title="Sair"><i data-lucide="log-out" class="w-4 h-4 text-destructive"></i></button>
-                {% else %}
-                <a href="{% url 'account_login' %}"
-                    class="btn btn-ghost bg-transparent shadow-none text-foreground hover:bg-muted font-medium h-10 px-4 flex items-center gap-2">Entrar</a>
-                <a href="{% url 'account_signup' %}"
-                    class="btn btn-ghost bg-transparent shadow-none text-foreground hover:bg-muted font-medium h-10 px-4 flex items-center gap-2">Cadastrar</a>
-                {% endif %}
-            </nav>
-        </div>
-    </header>
+            </header>
 
-    <main class="flex-1 container mx-auto px-4 py-8">
+            <section class="scrollbar">
+                <!-- Group 1: Catálogo -->
+                <div role="group" aria-labelledby="group-label-catalog">
+                    <h3 id="group-label-catalog">Catálogo</h3>
+                    <ul>
+                        <li>
+                            <a href="{% url 'public_product_list' %}">
+                                <i data-lucide="clipboard" class="w-4 h-4"></i>
+                                <span>Público</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'product_list' %}">
+                                <i data-lucide="package-2" class="w-4 h-4"></i>
+                                <span>Produtos</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'category_list' %}">
+                                <i data-lucide="tag" class="w-4 h-4"></i>
+                                <span>Categorias</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Group 2: Estoque e Preços -->
+                <div role="group" aria-labelledby="group-label-operations">
+                    <h3 id="group-label-operations">Operações</h3>
+                    <ul>
+                        <li>
+                            <a href="{% url 'product_movement_overview' %}">
+                                <i data-lucide="package-search" class="w-4 h-4"></i>
+                                <span>Estoque</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'price_history_overview' %}">
+                                <i data-lucide="history" class="w-4 h-4"></i>
+                                <span>Preços</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Group 3: Contatos -->
+                <div role="group" aria-labelledby="group-label-partners">
+                    <h3 id="group-label-partners">Parceiros</h3>
+                    <ul>
+                        <li>
+                            <a href="{% url 'partner_list' %}">
+                                <i data-lucide="users" class="w-4 h-4"></i>
+                                <span>Clientes & Fornecedores</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'supplier_list' %}">
+                                <i data-lucide="truck" class="w-4 h-4"></i>
+                                <span>Fornecedores</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Group 4: Analíticos -->
+                <div role="group" aria-labelledby="group-label-reports">
+                    <h3 id="group-label-reports">Relatórios</h3>
+                    <ul>
+                        <li>
+                            <a href="{% url 'report_dashboard' %}">
+                                <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+                                <span>Giro & Lucratividade</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </section>
+
+            <footer class="border-t border-sidebar-border">
+                <div class="px-4 py-2 flex items-center justify-between gap-2">
+                    <span class="text-xs text-muted-foreground">Tema</span>
+                    <a href="#"
+                        hx-post="{% url 'toggle_theme' %}"
+                        hx-swap="none"
+                        onclick="toggleTheme()"
+                        class="btn btn-icon btn-ghost bg-transparent border-none shadow-none hover:bg-muted text-foreground"
+                        aria-label="Alternar Tema">
+                        <i data-lucide="sun" class="w-4 h-4 block dark:hidden theme-sun"></i>
+                        <i data-lucide="moon" class="w-4 h-4 hidden dark:block theme-moon"></i>
+                    </a>
+                </div>
+
+                <div class="p-3 border-t border-sidebar-border flex items-center justify-between gap-2">
+                    <a href="{% url 'profile' %}" class="flex items-center gap-2 min-w-0 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground p-1 rounded-md transition-colors flex-1">
+                        <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                            <i data-lucide="user" class="w-4 h-4"></i>
+                        </div>
+                        <div class="flex flex-col text-left min-w-0">
+                            <span class="text-[11px] font-bold leading-none truncate">{{ user.username }}</span>
+                            <span class="text-[9px] text-muted-foreground truncate">{{ user.email }}</span>
+                        </div>
+                    </a>
+                    <button onclick="toggleLogoutModal(true)"
+                        class="text-destructive hover:bg-destructive/10"
+                        title="Sair">
+                        <i data-lucide="log-out" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </footer>
+        </nav>
+    </aside>
+    {% endif %}
+
+    <!-- Main Content Wrapper -->
+    <div class="flex-1 flex flex-col min-h-screen">
+        <!-- Top Navigation Header -->
+        <header class="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-40 h-14">
+            <div class="container mx-auto px-4 h-full flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    {% if user.is_authenticated %}
+                    <!-- Mobile Hamburger -->
+                    <button type="button" onclick="document.dispatchEvent(new CustomEvent('basecoat:sidebar'))"
+                        class="md:hidden" aria-label="Menu" title="Alternar Menu">
+                        <i data-lucide="menu" class="w-5 h-5"></i>
+                    </button>
+                    <!-- Desktop sidebar collapse quick button -->
+                    <button type="button" onclick="document.dispatchEvent(new CustomEvent('basecoat:sidebar'))"
+                        class="hidden md:flex" aria-label="Recolher Menu" title="Recolher Menu">
+                        <i data-lucide="menu" class="w-5 h-5"></i>
+                    </button>
+                    <!-- Mobile Brand Logo -->
+                    <a href="{% url 'product_list' %}" class="text-xl font-bold flex items-center gap-2 md:hidden">
+                        <i data-lucide="blocks" class="w-5 h-5"></i>
+                        <span>Kore</span>
+                    </a>
+                    {% else %}
+                    <!-- Always show brand logo if guest -->
+                    <a href="/" class="text-xl font-bold flex items-center gap-2">
+                        <i data-lucide="blocks" class="w-6 h-6"></i>
+                        <span>Kore</span>
+                    </a>
+                    {% endif %}
+                </div>
+
+                <nav class="flex gap-1 md:gap-2 items-center">
+                    {% if not user.is_authenticated %}
+                    <a href="#"
+                        hx-post="{% url 'toggle_theme' %}"
+                        hx-swap="none"
+                        onclick="toggleTheme()"
+                        class="btn btn-icon btn-ghost bg-transparent border-none shadow-none hover:bg-muted text-foreground"
+                        aria-label="Alternar Tema">
+                        <i data-lucide="sun" class="w-5 h-5 block dark:hidden theme-sun"></i>
+                        <i data-lucide="moon" class="w-5 h-5 hidden dark:block theme-moon"></i>
+                    </a>
+                    <a href="{% url 'account_login' %}"
+                        class="btn btn-ghost bg-transparent shadow-none text-foreground hover:bg-muted font-medium h-10 px-4 flex items-center gap-2">Entrar</a>
+                    <a href="{% url 'account_signup' %}"
+                        class="btn btn-ghost bg-transparent shadow-none text-foreground hover:bg-muted font-medium h-10 px-4 flex items-center gap-2">Cadastrar</a>
+                    {% endif %}
+                </nav>
+            </div>
+        </header>
+
+        <main class="flex-1 container mx-auto px-4 py-8">
         {% block content %}
         {% endblock %}
     </main>
@@ -206,6 +300,47 @@
 
     <script src="{% static 'js/main.js' %}" defer></script>
     <script src="{% static 'js/utils.js' %}" defer></script>
+
+    {% if user.is_authenticated %}
+    <script>
+      (() => {
+        document.addEventListener('DOMContentLoaded', () => {
+          const sidebar = document.getElementById('sidebar');
+          if (!sidebar) return;
+
+          const updateCurrentLinks = () => {
+            const currentPath = window.location.pathname.replace(/\/$/, '');
+            const currentSearch = window.location.search;
+            const currentKey = `${currentPath}${currentSearch}`;
+
+            sidebar.querySelectorAll('a, button').forEach((item) => {
+              const href = item.getAttribute('href');
+              if (!href) {
+                item.removeAttribute('aria-current');
+                return;
+              }
+
+              try {
+                const url = new URL(href, window.location.origin);
+                const itemPath = url.pathname.replace(/\/$/, '');
+                const itemKey = `${itemPath}${url.search}`;
+
+                if (itemKey === currentKey) {
+                  item.setAttribute('aria-current', 'page');
+                } else {
+                  item.removeAttribute('aria-current');
+                }
+              } catch (e) {}
+            });
+          };
+
+          document.addEventListener('htmx:afterSettle', updateCurrentLinks);
+          window.addEventListener('popstate', updateCurrentLinks);
+          updateCurrentLinks();
+        });
+      })();
+    </script>
+    {% endif %}
 
     {% block extra_scripts %}
     {% endblock %}
