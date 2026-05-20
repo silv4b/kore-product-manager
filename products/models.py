@@ -25,20 +25,6 @@ class Category(models.Model):
         return self.name
 
 
-class Supplier(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="suppliers", null=True, blank=True)
-    name = models.CharField(max_length=255)
-    contact = models.CharField(max_length=255, blank=True, default="")
-    observations = models.TextField(blank=True, default="")
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ["name"]
-
-    def __str__(self):
-        return self.name
-
-
 class ProductManager(models.Manager):
     def for_user(self, user):
         if not user.is_authenticated:
@@ -55,7 +41,7 @@ class ProductManager(models.Manager):
 class Product(models.Model):
     # 1. Campos do Banco de Dados Primeiro
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="products", null=True, blank=True)
-    supplier = models.ForeignKey("Supplier", on_delete=models.SET_NULL, null=True, blank=True, related_name="products")
+    supplier = models.ForeignKey("partners.Supplier", on_delete=models.SET_NULL, null=True, blank=True, related_name="products")
     categories = models.ManyToManyField(
         Category,
         related_name="products",

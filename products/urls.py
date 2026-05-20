@@ -25,11 +25,8 @@ urlpatterns = [
     path("categories/delete/<int:pk>/", views.CategoryDeleteView.as_view(), name="category_delete"),
     path("categories/duplicate/<int:pk>/", views.CategoryDuplicateView.as_view(), name="category_duplicate"),
 
-    # Suppliers
-    path("suppliers/", views.SupplierListView.as_view(), name="supplier_list"),
-    path("suppliers/add/", views.SupplierCreateView.as_view(), name="supplier_create"),
-    path("suppliers/edit/<int:pk>/", views.SupplierUpdateView.as_view(), name="supplier_update"),
-    path("suppliers/delete/<int:pk>/", views.SupplierDeleteView.as_view(), name="supplier_delete"),
+    # Suppliers (redirected to partners app)
+    path("suppliers/", views.supplier_list_redirect, name="supplier_list"),
 
     # Reports
     path("reports/", views.ReportDashboardView.as_view(), name="report_dashboard"),

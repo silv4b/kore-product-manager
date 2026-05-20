@@ -15,3 +15,9 @@ class SupplierAdmin(admin.ModelAdmin):
     list_display = ("name", "company_name", "cnpj", "email", "user")
     search_fields = ("name", "company_name", "cnpj")
     list_filter = ("user",)
+    fieldsets = (
+        (None, {"fields": ("user", "name", "company_name", "cnpj")}),
+        ("Contato", {"fields": ("email", "phone", "contact_person", "website")}),
+        ("Endereço", {"fields": ("address",)}),
+        ("Observações", {"fields": ("observations",)}),
+    )

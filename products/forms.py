@@ -3,7 +3,9 @@ from decimal import InvalidOperation as DecimalException
 
 from django import forms
 
-from .models import Category, Product, ProductMovement, Supplier
+from partners.models import Supplier
+
+from .models import Category, Product, ProductMovement
 
 
 class CategoryForm(forms.ModelForm):
@@ -26,21 +28,6 @@ class CategoryForm(forms.ModelForm):
         if self.user and Category.objects.filter(user=self.user, slug=slug).exclude(pk=self.instance.pk).exists():
             raise forms.ValidationError("Você já possui uma categoria com este slug.")
         return slug
-
-
-class SupplierForm(forms.ModelForm):
-    def __init__(self, *args, **kwargs):
-        self.user = kwargs.pop("user", None)
-        super().__init__(*args, **kwargs)
-
-    class Meta:
-        model = Supplier
-        fields = ["name", "contact", "observations"]
-        widgets = {
-            "name": forms.TextInput(attrs={"class": "input w-full", "placeholder": "Nome do Fornecedor"}),
-            "contact": forms.TextInput(attrs={"class": "input w-full", "placeholder": "Contato (Telefone, E-mail, etc.)"}),
-            "observations": forms.Textarea(attrs={"class": "input w-full h-24 py-2", "placeholder": "Observações"}),
-        }
 
 
 class ProductForm(forms.ModelForm):

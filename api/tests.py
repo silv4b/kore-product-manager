@@ -5,7 +5,8 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from products.models import Category, Product, ProductMovement, Supplier
+from partners.models import Supplier
+from products.models import Category, Product, ProductMovement
 from products.tests.factories import UserFactory
 
 
@@ -54,7 +55,7 @@ def category(user):
 
 @pytest.fixture
 def supplier(user):
-    return Supplier.objects.create(user=user, name="Intel", contact="intel@example.com")
+    return Supplier.objects.create(user=user, name="Intel", email="intel@example.com")
 
 
 @pytest.fixture
@@ -190,7 +191,7 @@ class TestSupplierAPI:
         """
         Testa a criação de um fornecedor.
         """
-        data = {"name": "Dell", "contact": "dell@dell.com", "observations": "Fornecedor de computadores"}
+        data = {"name": "Dell", "email": "dell@dell.com", "observations": "Fornecedor de computadores"}
         response = auth_client.post(reverse("supplier-list"), data)
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["name"] == "Dell"

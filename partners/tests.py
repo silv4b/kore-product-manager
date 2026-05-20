@@ -238,7 +238,7 @@ class TestPartnerViews:
 
     def test_supplier_delete_happy_path(self, logged_client, supplier):
         url = reverse("partner_supplier_delete", kwargs={"pk": supplier.id})
-        
+
         response = logged_client.get(url)
         assert response.status_code == 200
         assert "partners/partner_confirm_delete.html" in [t.name for t in response.templates]
