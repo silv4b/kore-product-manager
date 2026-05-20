@@ -83,18 +83,6 @@
                 </div>
 
                 <div class="field">
-                    <label for="id_supplier" class="text-foreground font-medium mb-1.5">Fornecedor</label>
-                    <select name="supplier" id="id_supplier" class="select w-full">
-                        <option value="">---------</option>
-                        {% for choice in form.supplier.field.queryset %}
-                            <option value="{{ choice.pk }}" {% if form.supplier.value|stringformat:"s" == choice.pk|stringformat:"s" %}selected{% endif %}>{{ choice.name }}</option>
-                        {% endfor %}
-                    </select>
-                    {% if form.supplier.errors %}<p class="text-destructive text-xs mt-1">{{ form.supplier.errors.0 }}</p>
-                    {% endif %}
-                </div>
-
-                <div class="field">
                     <label class="text-foreground font-medium mb-1.5 block">
                         Categorias
                     </label>
@@ -120,6 +108,18 @@
                     </div>
                     {% if form.categories.errors %}<p class="text-destructive text-xs mt-1">
                         {{ form.categories.errors.0 }}</p>{% endif %}
+                </div>
+
+                <div class="field">
+                    <label for="id_supplier" class="text-foreground font-medium mb-1.5">Fornecedor</label>
+                    <select name="supplier" id="id_supplier" class="select w-full">
+                        <option value="">---------</option>
+                        {% for choice in form.supplier.field.queryset %}
+                            <option value="{{ choice.pk }}" {% if form.supplier.value|stringformat:"s" == choice.pk|stringformat:"s" %}selected{% endif %}>{{ choice.name }}</option>
+                        {% endfor %}
+                    </select>
+                    {% if form.supplier.errors %}<p class="text-destructive text-xs mt-1">{{ form.supplier.errors.0 }}</p>
+                    {% endif %}
                 </div>
 
                 <div class="field p-4 bg-muted/30 rounded-lg border border-border transition-colors hover:bg-muted/50">
