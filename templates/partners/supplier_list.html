@@ -10,7 +10,7 @@
             <h2 class="text-3xl font-bold tracking-tight">{{ title }}</h2>
             <p class="text-muted-foreground">Gerencie seus fornecedores para reposição de estoque.</p>
         </div>
-        <a href="{% url 'supplier_create' %}" class="btn btn-primary flex items-center gap-2">
+        <a href="{% url 'partner_supplier_create' %}" class="btn btn-primary flex items-center gap-2">
             <i data-lucide="plus" class="w-4 h-4"></i>
             Novo Fornecedor
         </a>
@@ -92,11 +92,11 @@
                         <td class="px-6 py-4 text-muted-foreground">{{ supplier.phone|mask_phone }}</td>
                         <td class="px-6 py-4 text-right">
                             <div class="flex justify-end gap-2">
-                                <a href="{% url 'supplier_update' supplier.pk %}" class="btn btn-sm btn-ghost p-2"
+                                <a href="{% url 'partner_supplier_update' supplier.pk %}" class="btn btn-sm btn-ghost p-2"
                                     title="Editar">
                                     <i data-lucide="pencil" class="w-4 h-4"></i>
                                 </a>
-                                <a href="{% url 'supplier_delete' supplier.pk %}"
+                                <a href="{% url 'partner_supplier_delete' supplier.pk %}"
                                     class="btn btn-sm btn-ghost p-2 text-destructive" title="Excluir">
                                     <i data-lucide="trash-2" class="w-4 h-4"></i>
                                 </a>

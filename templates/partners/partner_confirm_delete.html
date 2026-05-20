@@ -22,7 +22,7 @@
                 {% csrf_token %}
                 <button type="submit" class="btn btn-destructive w-full">Sim, Excluir permanentemente</button>
             </form>
-            <a href="{% if type == 'cliente' %}{% url 'customer_list' %}{% else %}{% url 'supplier_list' %}{% endif %}"
+            <a href="{% if type == 'cliente' %}{% url 'customer_list' %}{% else %}{% url 'partner_supplier_list' %}{% endif %}"
                 class="btn btn-ghost border border-border w-full text-center">Cancelar e Voltar</a>
         </footer>
     </div>

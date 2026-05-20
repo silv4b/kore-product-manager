@@ -5,7 +5,7 @@
     <div class="card">
         <header>
             <div class="flex flex-col gap-1">
-                <a href="{% if type == 'customer' %}{% url 'customer_list' %}{% else %}{% url 'supplier_list' %}{% endif %}"
+                <a href="{% if type == 'customer' %}{% url 'customer_list' %}{% else %}{% url 'partner_supplier_list' %}{% endif %}"
                     class="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 mb-1 transition-colors w-fit">
                     <i data-lucide="arrow-left" class="w-3 h-3"></i>
                     Voltar para lista
@@ -95,7 +95,7 @@
             </section>
 
             <footer class="p-6 border-t border-border flex flex-col sm:flex-row justify-end gap-3 bg-muted/20">
-                <a href="{% if type == 'customer' %}{% url 'customer_list' %}{% else %}{% url 'supplier_list' %}{% endif %}"
+                <a href="{% if type == 'customer' %}{% url 'customer_list' %}{% else %}{% url 'partner_supplier_list' %}{% endif %}"
                     class="btn btn-ghost border border-border order-2 sm:order-1 flex-1 sm:flex-none justify-center">
                     Cancelar
                 </a>
