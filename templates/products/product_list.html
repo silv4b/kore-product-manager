@@ -325,10 +325,12 @@
                         class="badge {% if product.stock == 0 %}badge-destructive{% elif product.is_low_stock %}bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400{% elif product.stock > 0 %}badge-secondary{% else %}badge-destructive{% endif %} text-[12px]">
                         Estoque: {{ product.stock }}
                     </span>
+                    {% if not is_public_view %}
                     <span
                         class="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full {% if product.is_public %}bg-green-100 text-green-700{% else %}bg-gray-100 text-gray-600{% endif %}">
                         {{ product.is_public|yesno:"Público,Privado" }}
                     </span>
+                    {% endif %}
                     {% if product.is_low_stock %}
                     <span class="text-[10px] text-destructive font-bold flex items-center gap-1 mt-1">
                         <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> Estoque Crítico
@@ -468,6 +470,7 @@
                             </a>
                         </th>
 
+                        {% if not is_public_view %}
                         <th class="px-6 py-4 font-semibold">
                             <a href="?sort=status&dir={% if current_sort == 'status' and current_dir == 'asc' %}desc{% else %}asc{% endif %}"
                                 class="flex items-center gap-1.5 hover:text-primary transition-colors group">
@@ -481,6 +484,7 @@
                                 {% endif %}
                             </a>
                         </th>
+                        {% endif %}
 
                         {% if is_public_view %}
                         <th class="px-6 py-4 font-semibold">
@@ -542,12 +546,14 @@
                             <span class="block text-[10px] text-destructive font-bold whitespace-nowrap">Mín: {{ product.min_stock_level }}</span>
                             {% endif %}
                         </td>
+                        {% if not is_public_view %}
                         <td class="px-6 py-4">
                             <span
                                 class="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full {% if product.is_public %}bg-green-100 text-green-700{% else %}bg-gray-100 text-gray-600{% endif %}">
                                 {{ product.is_public|yesno:"Público,Privado" }}
                             </span>
                         </td>
+                        {% endif %}
                         {% if is_public_view %}
                         <td class="px-6 py-4 text-muted-foreground">{{ product.user.username }}</td>
                         {% endif %}
