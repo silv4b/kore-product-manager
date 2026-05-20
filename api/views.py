@@ -3,14 +3,32 @@ from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from products.models import Category, Product, ProductMovement
+from products.models import Category, Product, ProductMovement, Supplier
 
 from .serializers import (
     CategorySerializer,
     ProductDetailSerializer,
     ProductMovementSerializer,
     ProductSerializer,
+    SupplierSerializer,
 )
+
+
+class SupplierViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint para gerenciar fornecedores.
+    """
+
+    serializer_class = SupplierSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [filters.SearchFilter]
+    search_fields = ["name", "contact"]
+
+    def get_queryset(self):
+        return Supplier.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
 
 class CategoryViewSet(viewsets.ModelViewSet):

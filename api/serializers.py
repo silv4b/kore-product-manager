@@ -1,13 +1,20 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
 
-from products.models import Category, PriceHistory, Product, ProductMovement
+from products.models import Category, PriceHistory, Product, ProductMovement, Supplier
 
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ["id", "username", "email"]
+
+
+class SupplierSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Supplier
+        fields = ["id", "name", "contact", "observations", "created_at"]
+        read_only_fields = ["user", "created_at"]
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -49,12 +56,21 @@ class ProductSerializer(serializers.ModelSerializer):
         source="categories",
         required=False,
     )
+    supplier = SupplierSerializer(read_only=True)
+    supplier_id = serializers.PrimaryKeyRelatedField(
+        queryset=Supplier.objects.none(),
+        source="supplier",
+        required=False,
+        allow_null=True,
+        write_only=True,
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         request = self.context.get("request")
         if request and hasattr(request, "user"):
             self.fields["category_ids"].queryset = Category.objects.filter(user=request.user)
+            self.fields["supplier_id"].queryset = Supplier.objects.filter(user=request.user)
 
     class Meta:
         model = Product
@@ -63,14 +79,19 @@ class ProductSerializer(serializers.ModelSerializer):
             "name",
             "description",
             "price",
+            "cost_price",
+            "min_stock_level",
+            "profit_margin",
             "stock",
             "is_public",
             "created_at",
             "updated_at",
             "categories",
             "category_ids",
+            "supplier",
+            "supplier_id",
         ]
-        read_only_fields = ["user", "created_at", "updated_at"]
+        read_only_fields = ["user", "created_at", "updated_at", "profit_margin"]
 
 
 class ProductDetailSerializer(ProductSerializer):

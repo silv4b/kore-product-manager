@@ -14,6 +14,7 @@ from . import views
 
 router = DefaultRouter()
 router.register(r"categories", views.CategoryViewSet, basename="category")
+router.register(r"suppliers", views.SupplierViewSet, basename="supplier")
 router.register(r"products", views.ProductViewSet, basename="product")
 router.register(r"movements", views.ProductMovementViewSet, basename="movement")
 
