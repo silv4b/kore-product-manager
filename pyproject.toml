@@ -17,7 +17,6 @@ dependencies = [
     "psycopg>=3.3.2",
     "psycopg2-binary>=2.9.11",
     "python-dotenv>=1.2.1",
-    "ruff>=0.15.13",
     "uvicorn>=0.30.1",
     "whitenoise>=6.11.0",
 ]
@@ -30,7 +29,11 @@ dev = [
     "pytest>=9.0.2",
     "pytest-cov>=7.0.0",
     "pytest-django>=4.12.0",
+    "django-stubs>=5.0",
+    "djangorestframework-stubs>=3.15",
     "pytest-watch>=4.2.0",
+    "ruff>=0.15.13",
+    "pandas>=3.0.3",
 ]
 
 [tool.poe.tasks]
@@ -65,8 +68,8 @@ select = [
     "DJ", # flake8-django
     "TC", # flake8-type-checking
 ]
-# Bloco pronto para futuras exceções
 
+# Bloco pronto para futuras exceções
 [tool.ruff.lint.per-file-ignores]
 "**/tests/*.py" = ["E501"]
 
@@ -76,7 +79,15 @@ sequence = ["cov-run", "cov-report", "cov-html"]
 
 [tool.coverage.run]
 source = ["products", "api", "partners", "kore-product-manager"]
-omit = ["*/tests/*", "*/__pycache__/*", "*/migrations/*", "manage.py", "*/urls.py", "*/wsgi.py", "*/asgi.py"]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/migrations/*",
+    "manage.py",
+    "*/urls.py",
+    "*/wsgi.py",
+    "*/asgi.py",
+]
 
 [tool.coverage.report]
 show_missing = true
