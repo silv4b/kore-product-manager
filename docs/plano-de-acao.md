@@ -58,53 +58,49 @@
 
 - **Problema**: `--cov=products/tests/` mede cobertura dos testes, não do código fonte
 - **Arquivo**: `pytest.ini:11`
-- **Impacto**: Relatório de cobertura enganoso (mostra 100% para código não testado)
-- **Solução**: Alterado para `--cov=products --cov=api --cov=partners`
+- **Impacto**: Relatório de cobertura enganoso (mostra 100% para código não testa## Fase 2 - Correções de Fluxo e Integridade ✅ CONCLUÍDA
 
----
-
-## Fase 2 - Correções de Fluxo e Integridade
-
-### 2.1 `AUTHENTICATION_BACKENDS` definido duas vezes
+### 2.1 `AUTHENTICATION_BACKENDS` definido duas vezes ✅
 
 - **Problema**: Linhas 63 e 196 em `settings.py`; segunda sobrescreve primeira
 - **Arquivo**: `kore-product-manager/settings.py:63,196`
 - **Impacto**: Código morto e confusão, mas sem impacto funcional (valores idênticos)
 - **Solução**: Remover bloco duplicado da linha 63
 
-### 2.2 `api/serializers.py` - categoria de outro usuário via API
+### 2.2 `api/serializers.py` - categoria de outro usuário via API ✅
 
 - **Problema**: `queryset=Category.objects.all()` permite associar categorias de outros usuários
 - **Arquivo**: `api/serializers.py:47`
 - **Impacto**: Vazamento de dados e violação de isolamento entre usuários
 - **Solução**: Sobrescrever `__init__` do serializer para filtrar `category_ids` pelo `request.user`
 
-### 2.3 Conflito `dotenv` vs `python-dotenv` em `pyproject.toml`
+### 2.3 Conflito `dotenv` vs `python-dotenv` em `pyproject.toml` ✅
 
 - **Problema**: Dependências concorrentes; pacote `dotenv` não mantido desde 2016
 - **Arquivo**: `pyproject.toml:14,19`
 - **Impacto**: Instalação imprevisível; pode resolver pacote errado
 - **Solução**: Remover `"dotenv>=0.9.9"`, manter apenas `"python-dotenv"`
 
-### 2.4 `assert` em produção em `products/forms.py`
+### 2.4 `assert` em produção em `products/forms.py` ✅
 
 - **Problema**: `assert stock is not None` é removido com `-O` (modo otimizado)
 - **Arquivo**: `products/forms.py:79`
 - **Impacto**: Validação removida em produção com Python -O
 - **Solução**: Substituir por `if stock is None: raise forms.ValidationError(...)`
 
-### 2.5 Timezone inconsistency em `product_movement_view` e `product_movement_overview`
+### 2.5 Timezone inconsistency em `product_movement_view` e `product_movement_overview` ✅
 
 - **Problema**: Datas não são `make_aware()` ao filtrar movimentos
 - **Arquivo**: `products/views.py:467-478, 534-545`
 - **Impacto**: Filtros de data incorretos (diferença de fuso horário)
 - **Solução**: Aplicar `timezone.make_aware()` consistente (como já feito em `price_history_view`)
 
-### 2.6 `user_public_catalog` computa stats em Python (memory leak potencial)
+### 2.6 `user_public_catalog` computa stats em Python (memory leak potencial) ✅
 
 - **Problema**: `sum(p.price * p.stock for p in products)` carrega tudo em memória em vez de usar o banco
 - **Arquivo**: `products/views.py:870-874`
 - **Impacto**: Problema de performance com muitos produtos; inconsistente com outras views que usam `ExpressionWrapper`
+- **Solução**: Usar `ExpressionWrapper` + `Sum` como nas outras viewstente com outras views que usam `ExpressionWrapper`
 - **Solução**: Usar `ExpressionWrapper` + `Sum` como nas outras views
 
 ---
@@ -158,46 +154,46 @@
 
 ---
 
-## Fase 4 - Refatoração de Código (Qualidade)
+## Fase 4 - Refatoração de Código (Qualidade) ✅ CONCLUÍDA
 
-### 4.1 Extrair lógica de filtro duplicada
+### 4.1 Extrair lógica de filtro duplicada ✅
 
 - **Problema**: Mesmo filtro (q, category_id, min_price, max_price, min_stock, max_stock) copiado 6 vezes em `products/views.py`
 - **Arquivos**: `products/views.py:78-93, 329-337, 511-518, 593-600, 844-866, 924-935`
 - **Ação**: Criar `ProductFilter` usando `django-filter` (já instalado!) ou função `filter_products(queryset, request)`
 
-### 4.2 Extrair lógica de ordenação duplicada
+### 4.2 Extrair lógica de ordenação duplicada ✅
 
 - **Problema**: Dict `valid_sort_fields` e lógica de prefixo copiados 4 vezes
 - **Arquivos**: `products/views.py:96-108, 682-703, 937-947`, `partners/views.py:27-43, 113-131`
 - **Ação**: Criar função `sort_queryset(queryset, request, valid_fields, default_sort)`
 
-### 4.3 Extrair permission check duplicado
+### 4.3 Extrair permission check duplicado ✅
 
 - **Problema**: `if not product.is_public: if not request.user.is_authenticated or ...` repetido 3x
 - **Arquivo**: `products/views.py:258-261, 270-273, 451-454`
 - **Ação**: Criar método `Product.is_accessible_by(user)` ou função helper
 
-### 4.4 Criar `ProductManager.for_user(user)`
+### 4.4 Criar `ProductManager.for_user(user)` ✅
 
 - **Problema**: `Product.objects.filter(user=request.user)` repetido 10+ vezes
 - **Arquivo**: `products/models.py`
 - **Ação**: Adicionar `class ProductManager(models.Manager)` com `def for_user(self, user)` e `def public(self)`
 
-### 4.5 Quebrar funções gigantes
+### 4.5 Quebrar funções gigantes ✅
 
 - `product_list` (134 linhas) — extrair filtro, ordenação, stats, view_mode
 - `price_history_overview` (130 linhas) — extrair stats, sparkline, trend analysis
 - **Arquivo**: `products/views.py`
 
-### 4.6 Import cleanup
+### 4.6 Import cleanup ✅
 
 - Remover imports duplicados dentro de funções (`datetime`, `Sum`)
 - Remover imports não utilizados (`api/models.py`, `api/admin.py`)
 - Padronizar aspas (single para double em `apps.py`)
 - Remover self-import com `TYPE_CHECKING` em `products/models.py:7-8`
 
-### 4.7 Adicionar type hints
+### 4.7 Adicionar type hints ✅
 
 - Pelo menos views e forms (assinaturas de função)
 
