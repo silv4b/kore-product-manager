@@ -149,7 +149,7 @@ def supplier_create(request):
             messages.success(
                 request, f'Fornecedor "{supplier.name}" criado com sucesso!'
             )
-            return redirect("supplier_list")
+            return redirect("partner_supplier_list")
     else:
         form = SupplierForm()
     return render(
@@ -169,7 +169,7 @@ def supplier_update(request, pk):
             messages.success(
                 request, f'Fornecedor "{supplier.name}" atualizado com sucesso!'
             )
-            return redirect("supplier_list")
+            return redirect("partner_supplier_list")
     else:
         form = SupplierForm(instance=supplier)
     return render(
@@ -191,7 +191,7 @@ def supplier_delete(request, pk):
         name = supplier.name
         supplier.delete()
         messages.success(request, f'Fornecedor "{name}" removido.')
-        return redirect("supplier_list")
+        return redirect("partner_supplier_list")
     return render(
         request,
         "partners/partner_confirm_delete.html",
