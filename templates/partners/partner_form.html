@@ -44,40 +44,8 @@
                             {% if field.field.required %}<span class="text-destructive">*</span>{% endif %}
                         </label>
 
-                        <div class="relative group">
-                            {% if field.name == 'email' %}
-                            <i data-lucide="mail"
-                                class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors"></i>
-                            {% elif field.name == 'phone' %}
-                            <i data-lucide="phone"
-                                class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors"></i>
-                            {% elif field.name == 'cpf' %}
-                            <i data-lucide="credit-card"
-                                class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors"></i>
-                            {% elif field.name == 'cnpj' %}
-                            <i data-lucide="building-2"
-                                class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors"></i>
-                            {% elif field.name == 'website' %}
-                            <i data-lucide="globe"
-                                class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors"></i>
-                            {% endif %}
-
-                            {% with field_class="input w-full" %}
-                            {% if field.name == 'email' or field.name == 'phone' or field.name == 'cpf' or field.name == 'cnpj' or field.name == 'website' %}
+                        <div>
                             {{ field }}
-                            <!-- O Django já insere a classe 'input' via forms.py, mas precisamos garantir o padding-left se houver ícone -->
-                            <style>
-                                #{{ field.id_for_label }
-                                }
-
-                                    {
-                                    padding-left: 2.5rem;
-                                }
-                            </style>
-                            {% else %}
-                            {{ field }}
-                            {% endif %}
-                            {% endwith %}
                         </div>
 
                         {% if field.help_text %}
