@@ -46,6 +46,11 @@ class ProductMovementSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["product", "moved_at"]
 
+    def validate_quantity(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("A quantidade deve ser maior que zero.")
+        return value
+
 
 class ProductSerializer(serializers.ModelSerializer):
     categories = CategorySerializer(many=True, read_only=True)
@@ -70,6 +75,8 @@ class ProductSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if request and hasattr(request, "user"):
             self.fields["category_ids"].queryset = Category.objects.filter(user=request.user)
+            if hasattr(self.fields["category_ids"], "child_relation"):
+                self.fields["category_ids"].child_relation.queryset = Category.objects.filter(user=request.user)
             self.fields["supplier_id"].queryset = Supplier.objects.filter(user=request.user)
 
     class Meta:
