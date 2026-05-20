@@ -5,7 +5,10 @@
  */
 function initCategoryFilter(containerId) {
     const commandContainer = document.getElementById(containerId);
-    if (!commandContainer) return;
+    if (!commandContainer) {
+        console.warn(`Category filter container '#${containerId}' not found.`);
+        return;
+    }
 
     // Use querySelector to find elements within the specific container
     const searchInput = commandContainer.querySelector('#category-filter-search');
@@ -31,7 +34,13 @@ function initCategoryFilter(containerId) {
         searchInput.value = currentSelectedName; // Restore if closed without selection
     };
 
+    // Open menu on input focus or click anywhere on the container
     searchInput.addEventListener('focus', openMenu);
+    commandContainer.addEventListener('click', (e) => {
+        if (e.target === searchInput || commandContainer.querySelector('.relative.group')?.contains(e.target)) {
+            openMenu();
+        }
+    });
 
     document.addEventListener('click', (e) => {
         if (!commandContainer.contains(e.target)) {
@@ -209,4 +218,5 @@ document.addEventListener('DOMContentLoaded', () => {
 document.body.addEventListener('htmx:afterSwap', () => {
     initSparklines();
     initMasks();
+    initCategoryFilter('category-filter-command');
 });

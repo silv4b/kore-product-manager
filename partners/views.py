@@ -2,6 +2,8 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 
+from products.utils import paginate_queryset
+
 from .forms import CustomerForm, SupplierForm
 from .models import Customer, Supplier
 
@@ -43,10 +45,12 @@ def customer_list(request):
         f"{prefix}{target_field}"
     )
 
+    page_obj, pagination_ctx = paginate_queryset(customers, request)
+
     return render(
         request,
         "partners/customer_list.html",
-        {"customers": customers, "title": "Meus Clientes"},
+        {"customers": page_obj, "title": "Meus Clientes"} | pagination_ctx,
     )
 
 
@@ -131,10 +135,12 @@ def supplier_list(request):
         f"{prefix}{target_field}"
     )
 
+    page_obj, pagination_ctx = paginate_queryset(suppliers, request)
+
     return render(
         request,
         "partners/supplier_list.html",
-        {"suppliers": suppliers, "title": "Meus Fornecedores"},
+        {"suppliers": page_obj, "title": "Meus Fornecedores"} | pagination_ctx,
     )
 
 

@@ -14,16 +14,17 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import CreateView, DeleteView, DetailView, FormView, ListView, TemplateView, UpdateView
 
-from .forms import CategoryForm, MovementForm, ProductForm, SupplierForm
-from .models import Category, PriceHistory, Product, ProductMovement, Supplier
-from .utils import apply_product_filters, sort_queryset
+from .forms import CategoryForm, MovementForm, ProductForm
+from .models import Category, PriceHistory, Product, ProductMovement
+from .utils import PaginationMixin, apply_product_filters, paginate_queryset, sort_queryset
 
 
 # --- Product Views ---
-class ProductListView(LoginRequiredMixin, ListView):
+class ProductListView(LoginRequiredMixin, PaginationMixin, ListView):
     model = Product
     template_name = "products/product_list.html"
     context_object_name = "products"
+    paginate_by = 20
 
     def dispatch(self, request, *args, **kwargs):
         if "clear" in request.GET:
@@ -81,13 +82,13 @@ class ProductListView(LoginRequiredMixin, ListView):
         return products.distinct()
 
     def get_context_data(self, **kwargs):
+        full_qs = self.object_list
         context = super().get_context_data(**kwargs)
-        products = context["products"]
 
         context["stats"] = {
-            "total_count": products.count(),
-            "total_stock": products.aggregate(Sum("stock"))["stock__sum"] or 0,
-            "total_value": products.annotate(val=ExpressionWrapper(F("price") * F("stock"), output_field=DecimalField())).aggregate(total=Sum("val"))[
+            "total_count": full_qs.count(),
+            "total_stock": full_qs.aggregate(Sum("stock"))["stock__sum"] or 0,
+            "total_value": full_qs.annotate(val=ExpressionWrapper(F("price") * F("stock"), output_field=DecimalField())).aggregate(total=Sum("val"))[
                 "total"
             ]
             or 0,
@@ -358,6 +359,8 @@ class PriceHistoryOverviewView(LoginRequiredMixin, TemplateView):
             reverse=True,
         )
 
+        page_obj, pagination_ctx = paginate_queryset(produtos_com_historico, self.request)
+
         context.update(
             {
                 "total_alteracoes": total_alteracoes,
@@ -365,12 +368,13 @@ class PriceHistoryOverviewView(LoginRequiredMixin, TemplateView):
                 "maior_aumento": maior_aumento,
                 "maior_reducao": maior_reducao,
                 "media_alteracoes": media_alteracoes,
-                "produtos_com_historico": produtos_com_historico,
+                "produtos_com_historico": page_obj,
                 "categorias": Category.objects.filter(user=self.request.user).distinct(),
                 "selected_category": int(category_id) if category_id else "",
                 "q": q,
             }
         )
+        context.update(pagination_ctx)
         return context
 
 
@@ -431,10 +435,11 @@ class ProductMovementView(DetailView):
         return context
 
 
-class ProductMovementOverviewView(LoginRequiredMixin, ListView):
+class ProductMovementOverviewView(LoginRequiredMixin, PaginationMixin, ListView):
     model = ProductMovement
     template_name = "products/product_movement_overview.html"
     context_object_name = "movements"
+    paginate_by = 20
 
     def get_queryset(self):
         user_products = Product.objects.filter(user=self.request.user)
@@ -496,10 +501,11 @@ class ProductMovementOverviewView(LoginRequiredMixin, ListView):
         return context
 
 
-class MovementSelectProductView(LoginRequiredMixin, ListView):
+class MovementSelectProductView(LoginRequiredMixin, PaginationMixin, ListView):
     model = Product
     template_name = "products/movement_select_product.html"
     context_object_name = "products"
+    paginate_by = 20
 
     def dispatch(self, request, *args, **kwargs):
         self.type = kwargs.get("type")
@@ -586,10 +592,11 @@ class PerformMovementView(LoginRequiredMixin, CreateView):
 
 
 # --- Category Views ---
-class CategoryListView(LoginRequiredMixin, ListView):
+class CategoryListView(LoginRequiredMixin, PaginationMixin, ListView):
     model = Category
     template_name = "products/category_list.html"
     context_object_name = "categories"
+    paginate_by = 20
 
     def get_queryset(self):
         sort_field = self.request.GET.get("sort", "name")
@@ -754,10 +761,11 @@ class DeleteAccountView(LoginRequiredMixin, View):
             return redirect("profile")
 
 
-class UserPublicCatalogView(ListView):
+class UserPublicCatalogView(PaginationMixin, ListView):
     model = Product
     template_name = "products/product_list.html"
     context_object_name = "products"
+    paginate_by = 20
 
     def dispatch(self, request, *args, **kwargs):
         self.catalog_user = get_object_or_404(User, username=kwargs.get("username"))
@@ -786,13 +794,13 @@ class UserPublicCatalogView(ListView):
         return products.distinct().order_by("-created_at")
 
     def get_context_data(self, **kwargs):
+        full_qs = self.object_list
         context = super().get_context_data(**kwargs)
-        products = self.get_queryset()
 
         stats = {
-            "total_count": products.count(),
-            "total_stock": products.aggregate(Sum("stock"))["stock__sum"] or 0,
-            "total_value": products.annotate(val=ExpressionWrapper(F("price") * F("stock"), output_field=DecimalField())).aggregate(total=Sum("val"))[
+            "total_count": full_qs.count(),
+            "total_stock": full_qs.aggregate(Sum("stock"))["stock__sum"] or 0,
+            "total_value": full_qs.annotate(val=ExpressionWrapper(F("price") * F("stock"), output_field=DecimalField())).aggregate(total=Sum("val"))[
                 "total"
             ]
             or 0,
@@ -822,10 +830,11 @@ class UserPublicCatalogView(ListView):
         return context
 
 
-class PublicProductListView(ListView):
+class PublicProductListView(PaginationMixin, ListView):
     model = Product
     template_name = "products/product_list.html"
     context_object_name = "products"
+    paginate_by = 20
 
     def get_queryset(self):
         self.q = self.request.GET.get("q", "")
@@ -856,13 +865,13 @@ class PublicProductListView(ListView):
         return products.distinct()
 
     def get_context_data(self, **kwargs):
+        full_qs = self.object_list
         context = super().get_context_data(**kwargs)
-        products = self.get_queryset()
 
         stats = {
-            "total_count": products.count(),
-            "total_stock": products.aggregate(Sum("stock"))["stock__sum"] or 0,
-            "total_value": products.annotate(val=ExpressionWrapper(F("price") * F("stock"), output_field=DecimalField())).aggregate(total=Sum("val"))[
+            "total_count": full_qs.count(),
+            "total_stock": full_qs.aggregate(Sum("stock"))["stock__sum"] or 0,
+            "total_value": full_qs.annotate(val=ExpressionWrapper(F("price") * F("stock"), output_field=DecimalField())).aggregate(total=Sum("val"))[
                 "total"
             ]
             or 0,
@@ -946,89 +955,9 @@ class SetViewModeView(View):
         return redirect(request.META.get("HTTP_REFERER", "/"))
 
 
-# --- Supplier Views ---
-class SupplierListView(LoginRequiredMixin, ListView):
-    model = Supplier
-    template_name = "products/supplier_list.html"
-    context_object_name = "suppliers"
-
-    def get_queryset(self):
-        return Supplier.objects.filter(user=self.request.user)
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["title"] = "Fornecedores"
-        if self.request.user.is_authenticated:
-            context["view_mode"] = cast("Any", getattr(cast("Any", self.request.user), "profile", None)).view_preferences.get("supplier_list", "grid")
-        else:
-            context["view_mode"] = self.request.session.get("view_mode_supplier_list", "grid")
-        context["view_context"] = "supplier_list"
-        return context
-
-
-class SupplierCreateView(LoginRequiredMixin, CreateView):
-    model = Supplier
-    form_class = SupplierForm
-    template_name = "products/supplier_form.html"
-    success_url = reverse_lazy("supplier_list")
-
-    def get_form_kwargs(self):
-        kwargs = super().get_form_kwargs()
-        kwargs["user"] = self.request.user
-        return kwargs
-
-    def form_valid(self, form):
-        supplier = form.save(commit=False)
-        supplier.user = self.request.user
-        supplier.save()
-        messages.success(self.request, f'Fornecedor "{supplier.name}" criado com sucesso!')
-        return cast("Any", super()).form_valid(form)
-
-
-class SupplierUpdateView(LoginRequiredMixin, UpdateView):
-    model = Supplier
-    form_class = SupplierForm
-    template_name = "products/supplier_form.html"
-    success_url = reverse_lazy("supplier_list")
-    object: Supplier
-
-    def get_queryset(self):
-        return Supplier.objects.filter(user=self.request.user)
-
-    def get_form_kwargs(self):
-        kwargs = super().get_form_kwargs()
-        kwargs["user"] = self.request.user
-        return kwargs
-
-    def form_valid(self, form):
-        response = cast("Any", super()).form_valid(form)
-        messages.success(self.request, f'Fornecedor "{self.object.name}" atualizado com sucesso!')
-        return response
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["title"] = "Editar Fornecedor"
-        return context
-
-
-class SupplierDeleteView(LoginRequiredMixin, DeleteView):
-    model = Supplier
-    success_url = reverse_lazy("supplier_list")
-    object: Supplier
-
-    def get_queryset(self):
-        return Supplier.objects.filter(user=self.request.user)
-
-    def form_valid(self, form):
-        supplier_name = getattr(self.object, "name", "Fornecedor")
-        response = cast("Any", super()).form_valid(form)
-        messages.success(self.request, f'Fornecedor "{supplier_name}" removido permanentemente.')
-        return response
-
-    def get_template_names(self):
-        if self.request.headers.get("HX-Request"):
-            return ["products/supplier_delete_modal.html"]
-        return ["products/supplier_confirm_delete.html"]
+# --- Supplier Redirect ---
+def supplier_list_redirect(request):
+    return redirect("partner_supplier_list")
 
 
 # --- Report Views ---

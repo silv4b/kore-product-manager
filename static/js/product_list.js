@@ -227,8 +227,13 @@ function initKoreBulkActions() {
 }
 
 // Boot
-if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initKoreBulkActions);
-} else {
+function initProductList() {
     initKoreBulkActions();
+    initCategoryFilter('category-filter-command');
+}
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initProductList);
+} else {
+    initProductList();
 }
