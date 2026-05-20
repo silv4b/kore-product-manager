@@ -197,14 +197,9 @@ def track_stock_changes(sender, instance, created, **kwargs):
     Cria um registro inicial quando o produto é criado.
     """
     if created:
-        # Primeiro registro de estoque (Entrada) ao criar o produto
         if instance.stock > 0:
-            ProductMovement.objects.create(
-                product=instance,
-                type="IN",
-                quantity=instance.stock,
-                reason="Registro inicial do produto",
-            )
+            ProductMovement.objects.create(product=instance, type="IN", quantity=instance.stock, reason="Estoque inicial")
+        # No movement if initial stock is zero
     else:
         # Verifica se o estoque mudou comparando com o último estado conhecido
         # Precisamos saber o estoque anterior. Como o Django não guarda o estado anterior nativamente no save,
