@@ -13,6 +13,7 @@ dependencies = [
     "djangorestframework-simplejwt>=5.5.1",
     "drf-spectacular>=0.29.0",
     "gunicorn>=25.1.0",
+    "pillow>=12.2.0",
     "psycopg>=3.3.2",
     "psycopg2-binary>=2.9.11",
     "python-dotenv>=1.2.1",
@@ -33,18 +34,20 @@ dev = [
 ]
 
 [tool.poe.tasks]
-npm_build = { shell = "npm run build" }
+npm-build = { shell = "npm run build" }
 runserver = "python manage.py runserver"
 migrate = { shell = "python manage.py makemigrations && python manage.py migrate" }
 pytest = { shell = "pytest" }
-coverage = { shell = "coverage run -m pytest" }
-report = { shell = "coverage report" }
-coveragehtml = { shell = "coverage html" }
+
 ruff-fix = { shell = "ruff check . --fix" }
 ruffer = { shell = "ruff check ." }
 
+cov-run = "uv run coverage run -m pytest"
+cov-report = "uv run coverage report"
+cov-html = "uv run coverage html"
+
 [tool.poe.tasks.test]
-sequence = ["coverage", "coveragehtml", "report"]
+sequence = ["cov-run", "cov-report", "cov-html"]
 
 # Ruff configurations
 [tool.ruff]
@@ -66,3 +69,23 @@ select = [
 
 [tool.ruff.lint.per-file-ignores]
 "**/tests/*.py" = ["E501"]
+
+# Coverage configurations
+[tool.poe.tasks.coverage]
+sequence = ["cov-run", "cov-report", "cov-html"]
+
+[tool.coverage.run]
+source = ["products", "api", "partners", "kore-product-manager"]
+omit = ["*/tests/*", "*/__pycache__/*", "*/migrations/*", "manage.py", "*/urls.py", "*/wsgi.py", "*/asgi.py"]
+
+[tool.coverage.report]
+show_missing = true
+# Ignorar linhas vazias/comentários no cálculo
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "pass",
+    "raise NotImplementedError",
+]
+fail_under = 90 # Falha se a cobertura total for menor que 90%

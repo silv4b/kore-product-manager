@@ -141,9 +141,9 @@ class ProductFormTest(TestCase):
         form = ProductForm()
 
         self.assertEqual(form["price"].field.widget.attrs["placeholder"], "0,00")
-        self.assertEqual(form["name"].field.widget.attrs["placeholder"], "Product Name")
+        self.assertEqual(form["name"].field.widget.attrs["placeholder"], "Nome do Produto")
         self.assertEqual(
-            form["description"].field.widget.attrs["placeholder"], "Description"
+            form["description"].field.widget.attrs["placeholder"], "Descrição"
         )
         self.assertEqual(form["stock"].field.widget.attrs["placeholder"], "0")
 

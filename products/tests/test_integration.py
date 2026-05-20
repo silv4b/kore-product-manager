@@ -145,7 +145,7 @@ class ProductWorkflowTest(BaseTestCase):
         self.assertEqual(len(products), 1)
         self.assertEqual(products[0], book)
 
-        self.clear_session_key("filters_dashboard")
+        self.client.get(reverse("product_list") + "?clear=1")
 
         # 2. Teste de filtro por categoria
         response = self.client.get(
@@ -161,7 +161,7 @@ class ProductWorkflowTest(BaseTestCase):
         self.assertIn(phone.pk, product_ids)
         self.assertNotIn(book.pk, product_ids)
 
-        self.clear_session_key("filters_dashboard")
+        self.client.get(reverse("product_list") + "?clear=1")
 
         # 3. Teste de faixa de preço (min_price e max_price)
         response = self.client.get(
@@ -171,7 +171,7 @@ class ProductWorkflowTest(BaseTestCase):
         self.assertEqual(len(products), 1)
         self.assertEqual(products[0], phone)
 
-        self.clear_session_key("filters_dashboard")
+        self.client.get(reverse("product_list") + "?clear=1")
 
         # 4. Teste de estoque mínimo (min_stock)
         response = self.client.get(reverse("product_list"), {"min_stock": "20"})
@@ -179,7 +179,7 @@ class ProductWorkflowTest(BaseTestCase):
         self.assertEqual(len(products), 1)
         self.assertEqual(products[0], book)
 
-        self.clear_session_key("filters_dashboard")
+        self.client.get(reverse("product_list") + "?clear=1")
 
         # 5. Teste de ordenação por preço ascendente
         response = self.client.get(
