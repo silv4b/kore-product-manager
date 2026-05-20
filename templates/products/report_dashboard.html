@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+{% load l10n %}
+
+{% block content %}
+<div class="flex flex-col gap-6">
+    <!-- Header -->
+    <div>
+        <h1 class="text-3xl font-bold tracking-tight">Relatório de Giro e Lucratividade</h1>
+        <p class="text-muted-foreground">Monitore o desempenho financeiro e o fluxo de saída do seu estoque.</p>
+    </div>
+
+    <!-- Overview Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Valor Total a Preço de Custo -->
+        <div class="card p-6">
+            <div class="flex items-center justify-between space-y-0 pb-2">
+                <h3 class="tracking-tight text-sm font-medium text-muted-foreground">Custo Total do Estoque</h3>
+                <i data-lucide="package" class="w-4 h-4 text-muted-foreground"></i>
+            </div>
+            <div class="text-2xl font-bold">
+                R$ {{ total_cost_value|floatformat:2|localize }}
+            </div>
+            <p class="text-xs text-muted-foreground">
+                Capital investido em mercadorias atualmente armazenadas
+            </p>
+        </div>
+
+        <!-- Valor Total a Preço de Venda -->
+        <div class="card p-6">
+            <div class="flex items-center justify-between space-y-0 pb-2">
+                <h3 class="tracking-tight text-sm font-medium text-muted-foreground">Valor de Venda do Estoque</h3>
+                <i data-lucide="badge-dollar-sign" class="w-4 h-4 text-muted-foreground"></i>
+            </div>
+            <div class="text-2xl font-bold">
+                R$ {{ total_sales_value|floatformat:2|localize }}
+            </div>
+            <p class="text-xs text-muted-foreground">
+                Faturamento estimado com a venda de todo o estoque
+            </p>
+        </div>
+
+        <!-- Lucro Potencial Estimado -->
+        <div class="card p-6">
+            <div class="flex items-center justify-between space-y-0 pb-2">
+                <h3 class="tracking-tight text-sm font-medium text-muted-foreground">Lucro Potencial Estimado</h3>
+                <i data-lucide="trending-up" class="w-4 h-4 text-emerald-500"></i>
+            </div>
+            <div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                R$ {{ potential_profit|floatformat:2|localize }}
+            </div>
+            <p class="text-xs text-muted-foreground">
+                Retorno líquido estimado sobre o estoque atual
+            </p>
+        </div>
+    </div>
+
+    <!-- Top Selling Products Section -->
+    <div class="card overflow-hidden pt-0 pb-0">
+        <header class="border-b border-border p-6 flex justify-between items-center bg-muted/20">
+            <div class="flex items-center gap-2">
+                <i data-lucide="crown" class="w-5 h-5 text-amber-500"></i>
+                <div>
+                    <h3 class="font-bold text-lg">Top 5 Produtos Mais Vendidos</h3>
+                    <p class="text-xs text-muted-foreground">Classificados pelo volume total de saídas (vendas).</p>
+                </div>
+            </div>
+        </header>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left">
+                <thead class="bg-muted/50 border-b border-border">
+                    <tr>
+                        <th class="px-6 py-4 font-semibold">Produto</th>
+                        <th class="px-6 py-4 font-semibold text-center">Qtd. Vendida</th>
+                        <th class="px-6 py-4 font-semibold text-right">Custo Acumulado</th>
+                        <th class="px-6 py-4 font-semibold text-right">Receita Acumulada</th>
+                        <th class="px-6 py-4 font-semibold text-right">Lucro Líquido</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-border">
+                    {% for item in top_selling_products %}
+                    <tr class="hover:bg-muted/30 transition-colors">
+                        <td class="px-6 py-4">
+                            <div class="font-bold text-foreground">{{ item.product__name }}</div>
+                            <div class="text-xs text-muted-foreground">
+                                Preço unitário: R$ {{ item.product__price|localize }}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-center font-bold">
+                            {{ item.total_sold }}
+                        </td>
+                        <td class="px-6 py-4 text-right text-muted-foreground">
+                            R$ {{ item.total_cost|floatformat:2|localize }}
+                        </td>
+                        <td class="px-6 py-4 text-right text-primary font-medium">
+                            R$ {{ item.total_revenue|floatformat:2|localize }}
+                        </td>
+                        <td class="px-6 py-4 text-right text-emerald-600 dark:text-emerald-400 font-bold">
+                            R$ {{ item.total_profit|floatformat:2|localize }}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-12 text-center text-muted-foreground">
+                            <div class="flex flex-col items-center gap-2">
+                                <i data-lucide="package-x" class="w-12 h-12 text-muted-foreground/40"></i>
+                                <p class="text-sm">Nenhuma movimentação de saída registrada ainda.</p>
+                                <p class="text-xs text-muted-foreground">Registre saídas na seção de movimentações para popular este gráfico.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
