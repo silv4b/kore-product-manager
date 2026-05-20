@@ -1,128 +1,25 @@
 import csv
 import io
 
+from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 from django.http import HttpResponse
+from django.shortcuts import render
 from django.utils.text import slugify
-from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, permissions, status, viewsets
-from rest_framework.decorators import action
-from rest_framework.parsers import FormParser, MultiPartParser
-from rest_framework.response import Response
+from django.views import View
 
 from partners.models import Supplier
-from product_io.models import ExportLog, ImportLog
-from products.models import Category, Product, ProductMovement
+from products.models import Category, Product
 
-from .serializers import (
-    CategorySerializer,
-    ProductDetailSerializer,
-    ProductImportSerializer,
-    ProductMovementSerializer,
-    ProductSerializer,
-    SupplierSerializer,
-)
+from .models import ExportLog, ImportLog
 
 
-class SupplierViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint para gerenciar fornecedores.
-    """
+class ProductExportView(LoginRequiredMixin, View):
+    """Exporta produtos do usuário como CSV."""
 
-    serializer_class = SupplierSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    filter_backends = [filters.SearchFilter]
-    search_fields = ["name", "company_name", "email", "cnpj"]
-
-    def get_queryset(self):
-        return Supplier.objects.filter(user=self.request.user)
-
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
-
-
-class CategoryViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint para gerenciar categorias.
-    """
-
-    serializer_class = CategorySerializer
-    permission_classes = [permissions.IsAuthenticated]
-    filter_backends = [filters.SearchFilter]
-    search_fields = ["name", "description"]
-
-    def get_queryset(self):
-        return Category.objects.filter(user=self.request.user)
-
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
-
-
-class ProductViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint para gerenciar produtos.
-    """
-
-    permission_classes = [permissions.IsAuthenticated]
-    filter_backends = [
-        DjangoFilterBackend,
-        filters.SearchFilter,
-        filters.OrderingFilter,
-    ]
-    filterset_fields = ["is_public", "categories"]
-    search_fields = ["name", "description"]
-    ordering_fields = ["name", "price", "stock", "created_at"]
-
-    def get_queryset(self):
-        return Product.objects.filter(user=self.request.user)
-
-    def get_serializer_class(self):
-        if self.action == "retrieve":
-            return ProductDetailSerializer
-        return ProductSerializer
-
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
-
-    @action(detail=True, methods=["post"])
-    def movement(self, request, pk=None):
-        """
-        Registra uma nova movimentação para o produto.
-        """
-        product = self.get_object()
-        serializer = ProductMovementSerializer(data=request.data)
-
-        if serializer.is_valid():
-            movement_type = serializer.validated_data["type"]
-            quantity = serializer.validated_data["quantity"]
-
-            if movement_type == "OUT" and product.stock < quantity:
-                return Response(
-                    {"error": "Estoque insuficiente para esta saída."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            # Salva o movimento
-            serializer.save(product=product)
-
-            # Atualiza o estoque do produto manualmente para garantir consistência
-            if movement_type == "IN":
-                product.stock += quantity
-            else:
-                product.stock -= quantity
-            product.save()
-
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    @action(detail=False, methods=["get"])
-    def export(self, request, *args, **kwargs):
-        """Exporta produtos do usuário como CSV."""
-        products = (
-            Product.objects.filter(user=request.user)
-            .select_related("supplier")
-            .prefetch_related("categories")
-        )
+    def get(self, request, *args, **kwargs):
+        products = Product.objects.filter(user=request.user).select_related("supplier").prefetch_related("categories")
 
         response = HttpResponse(content_type="text/csv; charset=utf-8-sig")
         response["Content-Disposition"] = 'attachment; filename="produtos.csv"'
@@ -179,24 +76,36 @@ class ProductViewSet(viewsets.ModelViewSet):
 
         return response
 
-    @action(
-        detail=False,
-        methods=["post"],
-        parser_classes=[MultiPartParser, FormParser],
-    )
-    def import_csv(self, request, *args, **kwargs):
-        """Importa produtos a partir de um arquivo CSV."""
-        serializer = ProductImportSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        csv_file = serializer.validated_data["file"]
+class ProductImportView(LoginRequiredMixin, View):
+    """Importa produtos a partir de um arquivo CSV."""
+
+    template_name = "product_io/product_import.html"
+
+    EXPECTED_HEADERS = {
+        "nome",
+        "descricao",
+        "preco",
+        "preco_custo",
+        "estoque",
+        "estoque_minimo",
+        "categorias",
+        "fornecedor",
+        "publico",
+    }
+
+    def get(self, request, *args, **kwargs):
+        return render(request, self.template_name)
+
+    def post(self, request, *args, **kwargs):
+        csv_file = request.FILES.get("csv_file")
+        if not csv_file:
+            messages.error(request, "Nenhum arquivo enviado.")
+            return render(request, self.template_name)
 
         if not csv_file.name.endswith(".csv"):
-            return Response(
-                {"error": "Formato inválido. Envie um arquivo CSV."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            messages.error(request, "Formato inválido. Envie um arquivo CSV.")
+            return render(request, self.template_name)
 
         try:
             decoded_file = csv_file.read().decode("utf-8-sig")
@@ -213,10 +122,8 @@ class ProductViewSet(viewsets.ModelViewSet):
                     status="FAILED",
                     error_details=f"Erro de codificação: {exc}",
                 )
-                return Response(
-                    {"error": "Erro de codificação do arquivo. Use UTF-8 ou Latin-1."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+                messages.error(request, "Erro de codificação do arquivo. Use UTF-8 ou Latin-1.")
+                return render(request, self.template_name)
 
         reader = csv.DictReader(io.StringIO(decoded_file))
 
@@ -229,17 +136,11 @@ class ProductViewSet(viewsets.ModelViewSet):
                 status="FAILED",
                 error_details="Arquivo CSV vazio ou sem cabeçalho.",
             )
-            return Response(
-                {"error": "Arquivo CSV vazio ou sem cabeçalho."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            messages.error(request, "Arquivo CSV vazio ou sem cabeçalho.")
+            return render(request, self.template_name)
 
-        expected_headers = {
-            "nome", "descricao", "preco", "preco_custo",
-            "estoque", "estoque_minimo", "categorias", "fornecedor", "publico",
-        }
         sent_headers = {h.strip().lower() for h in reader.fieldnames if h}
-        missing = expected_headers - sent_headers
+        missing = self.EXPECTED_HEADERS - sent_headers
         if missing:
             ImportLog.objects.create(
                 user=request.user,
@@ -249,18 +150,19 @@ class ProductViewSet(viewsets.ModelViewSet):
                 status="FAILED",
                 error_details=f"Colunas obrigatórias ausentes: {', '.join(sorted(missing))}",
             )
-            return Response(
-                {"error": f"Colunas obrigatórias ausentes: {', '.join(sorted(missing))}."},
-                status=status.HTTP_400_BAD_REQUEST,
+            messages.error(
+                request,
+                f"Colunas obrigatórias ausentes: {', '.join(sorted(missing))}.",
             )
+            return render(request, self.template_name)
 
         rows_processed = 0
         rows_failed = 0
-        errors = []
+        errors: list[str] = []
 
         for line_num, row in enumerate(reader, start=2):
             row = {k.strip().lower(): v.strip() if v else "" for k, v in row.items()}
-            row_errors = []
+            row_errors: list[str] = []
 
             name = row.get("nome", "")
             if not name:
@@ -337,37 +239,35 @@ class ProductViewSet(viewsets.ModelViewSet):
 
             rows_processed += 1
 
-        status_result = "SUCCESS" if rows_failed == 0 else ("PARTIAL" if rows_processed > 0 else "FAILED")
+        status = "SUCCESS" if rows_failed == 0 else ("PARTIAL" if rows_processed > 0 else "FAILED")
 
         ImportLog.objects.create(
             user=request.user,
             filename=csv_file.name,
             rows_processed=rows_processed,
             rows_failed=rows_failed,
-            status=status_result,
+            status=status,
             error_details="\n".join(errors) if errors else "",
         )
 
-        return Response({
+        context = {
             "rows_processed": rows_processed,
             "rows_failed": rows_failed,
-            "status": status_result,
             "errors": errors,
-        })
+            "status": status,
+        }
 
+        if status == "SUCCESS":
+            messages.success(request, f"Importação concluída! {rows_processed} produto(s) importado(s).")
+        elif status == "PARTIAL":
+            messages.warning(
+                request,
+                f"Importação parcial: {rows_processed} sucesso, {rows_failed} falha(s).",
+            )
+        else:
+            messages.error(
+                request,
+                f"Importação falhou: {rows_failed} erro(s). Nenhum produto importado.",
+            )
 
-class ProductMovementViewSet(viewsets.ReadOnlyModelViewSet):
-    """
-    API endpoint para visualizar o histórico de movimentações.
-    """
-
-    serializer_class = ProductMovementSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    filterset_fields = ["product", "type"]
-    ordering_fields = ["moved_at"]
-
-
-
-    def get_queryset(self):
-        return ProductMovement.objects.filter(product__user=self.request.user)
+        return render(request, self.template_name, context)

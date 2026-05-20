@@ -1,7 +1,8 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
 
-from products.models import Category, PriceHistory, Product, ProductMovement, Supplier
+from partners.models import Supplier
+from products.models import Category, PriceHistory, Product, ProductMovement
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -13,7 +14,11 @@ class UserSerializer(serializers.ModelSerializer):
 class SupplierSerializer(serializers.ModelSerializer):
     class Meta:
         model = Supplier
-        fields = ["id", "name", "contact", "observations", "created_at"]
+        fields = [
+            "id", "name", "email", "phone", "address",
+            "cnpj", "company_name", "contact_person", "website",
+            "observations", "created_at",
+        ]
         read_only_fields = ["user", "created_at"]
 
 
@@ -99,6 +104,17 @@ class ProductSerializer(serializers.ModelSerializer):
             "supplier_id",
         ]
         read_only_fields = ["user", "created_at", "updated_at", "profit_margin"]
+
+
+class ProductImportSerializer(serializers.Serializer):
+    file = serializers.FileField()
+
+
+class ProductImportResultSerializer(serializers.Serializer):
+    rows_processed = serializers.IntegerField()
+    rows_failed = serializers.IntegerField()
+    status = serializers.CharField()
+    errors = serializers.ListField(child=serializers.CharField(), default=list)
 
 
 class ProductDetailSerializer(ProductSerializer):

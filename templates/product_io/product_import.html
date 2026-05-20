@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto mt-10">
+    <div class="card">
+        <header>
+            <h2 class="text-2xl font-bold">Importar Produtos</h2>
+            <p>Envie um arquivo CSV para importar produtos em massa.</p>
+        </header>
+
+        <form method="post" enctype="multipart/form-data" class="product-form">
+            {% csrf_token %}
+
+            <section class="flex flex-col gap-4 py-6 px-6">
+                <div class="field">
+                    <label for="csv_file" class="text-foreground font-medium mb-1.5">Arquivo CSV</label>
+                    <input type="file" name="csv_file" id="csv_file" accept=".csv" required
+                        class="input w-full">
+                    <p class="text-muted-foreground text-xs mt-1">
+                        O arquivo deve conter as colunas:
+                        nome, descricao, preco, preco_custo, estoque, estoque_minimo,
+                        categorias, fornecedor, publico.
+                    </p>
+                </div>
+
+                <div class="field">
+                    <p class="text-xs text-muted-foreground">
+                        <strong>Formato das colunas:</strong><br>
+                        <code>nome</code> — Nome do produto (obrigatório)<br>
+                        <code>preco</code> — Preço de venda (use ponto ou vírgula como separador decimal)<br>
+                        <code>preco_custo</code> — Preço de custo<br>
+                        <code>estoque</code> — Quantidade em estoque<br>
+                        <code>estoque_minimo</code> — Nível mínimo de estoque<br>
+                        <code>categorias</code> — Separar múltiplas categorias com | (pipe)<br>
+                        <code>fornecedor</code> — Nome do fornecedor (criado automaticamente se não existir)<br>
+                        <code>publico</code> — "sim" ou "nao"<br>
+                    </p>
+                </div>
+            </section>
+
+            <footer class="flex items-center justify-end gap-3 px-6 py-4 border-t border-border">
+                <a href="{% url 'product_list' %}" class="btn btn-ghost border border-border h-10 px-4">
+                    Cancelar
+                </a>
+                <button type="submit" class="btn btn-primary h-10 px-4">
+                    <i data-lucide="upload" class="w-4 h-4"></i>
+                    Importar
+                </button>
+            </footer>
+        </form>
+    </div>
+
+    {% if rows_processed is not None %}
+    <div class="card mt-6">
+        <header>
+            <h2 class="text-2xl font-bold">Resultado da Importação</h2>
+        </header>
+
+        <section class="py-6 px-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="card p-4 text-center">
+                    <div class="text-3xl font-black {% if status == 'SUCCESS' %}text-green-500{% elif status == 'PARTIAL' %}text-yellow-500{% else %}text-red-500{% endif %}">
+                        {{ rows_processed }}
+                    </div>
+                    <div class="text-sm text-muted-foreground mt-1">Importados</div>
+                </div>
+                <div class="card p-4 text-center">
+                    <div class="text-3xl font-black {% if rows_failed > 0 %}text-red-500{% else %}text-green-500{% endif %}">
+                        {{ rows_failed }}
+                    </div>
+                    <div class="text-sm text-muted-foreground mt-1">Com Falha</div>
+                </div>
+                <div class="card p-4 text-center">
+                    <div class="text-3xl font-black {% if status == 'SUCCESS' %}text-green-500{% elif status == 'PARTIAL' %}text-yellow-500{% else %}text-red-500{% endif %}">
+                        {% if status == 'SUCCESS' %}Sucesso{% elif status == 'PARTIAL' %}Parcial{% else %}Falha{% endif %}
+                    </div>
+                    <div class="text-sm text-muted-foreground mt-1">Status</div>
+                </div>
+            </div>
+
+            {% if errors %}
+            <div class="mt-6">
+                <h3 class="font-bold text-sm text-destructive mb-2">Erros encontrados:</h3>
+                <ul class="list-disc list-inside text-sm text-destructive space-y-1">
+                    {% for error in errors %}
+                    <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <div class="mt-6 flex justify-end">
+                <a href="{% url 'product_list' %}" class="btn btn-primary h-10 px-4">
+                    Ver Produtos
+                </a>
+            </div>
+        </section>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -38,6 +38,16 @@
                 </a>
             </div>
             {% if not is_public_view %}
+            <a href="{% url 'product_io:product_export' %}"
+                class="btn btn-ghost bg-transparent border border-border shadow-none text-foreground hover:bg-muted font-medium h-10 px-4 flex items-center gap-2">
+                <i data-lucide="download" class="w-4 h-4"></i>
+                Exportar
+            </a>
+            <a href="{% url 'product_io:product_import' %}"
+                class="btn btn-ghost bg-transparent border border-border shadow-none text-foreground hover:bg-muted font-medium h-10 px-4 flex items-center gap-2">
+                <i data-lucide="upload" class="w-4 h-4"></i>
+                Importar
+            </a>
             <a href="{% url 'product_create' %}"
                 class="btn btn-ghost bg-transparent border border-border shadow-none text-foreground hover:bg-muted font-medium h-10 px-4 flex items-center gap-2">
                 <i data-lucide="plus" class="w-4 h-4"></i>
