@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="max-w-md mx-auto mt-10">
+    <div class="card border-destructive/20 shadow-2xl bg-card">
+        <header class="border-b border-border p-6">
+            <div class="flex items-center gap-3 text-destructive mb-2">
+                <i data-lucide="trash-2" class="w-6 h-6"></i>
+                <h2 class="text-xl font-bold">Excluir Fornecedor</h2>
+            </div>
+            <p class="text-sm text-muted-foreground">Você está prestes a remover permanentemente este fornecedor.</p>
+        </header>
+
+        <section class="p-6">
+            <div class="bg-destructive/5 p-4 rounded-lg border border-destructive/10 mb-6 font-sans">
+                <p class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Fornecedor selecionado:</p>
+                <p class="text-lg font-bold text-foreground">"{{ supplier.name }}"</p>
+                {% if supplier.contact %}
+                <p class="text-xs text-muted-foreground mt-1 line-clamp-2 italic">{{ supplier.contact }}</p>
+                {% endif %}
+            </div>
+
+            <p class="text-sm text-muted-foreground leading-relaxed">
+                Esta ação <span class="font-bold text-destructive">não pode ser desfeita</span>. A associação com produtos será removida (o campo do fornecedor nos produtos ficará em branco).
+            </p>
+        </section>
+
+        <footer class="p-6 flex flex-col sm:flex-row justify-end gap-3 border-t border-border">
+            <a href="{% url 'supplier_list' %}"
+                class="btn btn-ghost border border-border bg-transparent text-foreground hover:bg-muted flex-1 sm:flex-none justify-center font-medium h-11 px-6">
+                Cancelar
+            </a>
+            <form method="post" action="{% url 'supplier_delete' supplier.pk %}" class="flex-1 sm:flex-none">
+                {% csrf_token %}
+                <button type="submit"
+                    class="btn btn-ghost bg-destructive text-white hover:bg-destructive/90 w-full justify-center font-bold h-11 px-8">
+                    Confirmar Exclusão
+                </button>
+            </form>
+        </footer>
+    </div>
+</div>
+{% endblock %}

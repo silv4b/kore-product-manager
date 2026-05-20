@@ -287,7 +287,7 @@
     class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 {% if view_mode == 'table' %}hidden{% endif %}">
     <!-- Grid com cards dos produtos -->
     {% for product in products %}
-    <div class="card flex flex-col h-full hover:shadow-md transition-shadow cursor-pointer group relative overflow-hidden"
+    <div class="card flex flex-col h-full hover:shadow-md transition-shadow cursor-pointer group relative overflow-hidden {% if product.is_low_stock %}border-destructive/30 bg-destructive/[0.01]{% endif %}"
         hx-get="{% url 'product_detail' product.pk %}" hx-target="#modal-container">
 
         {% if product.user == user and not is_public_view %}
@@ -305,16 +305,26 @@
                 <div>
                     <h2 class="text-xl font-bold line-clamp-1 mb-2">{{ product.name }}</h2>
                     <p class="text-lg font-bold text-primary">R$ {{ product.price|localize }}</p>
+                    {% if user.is_authenticated and not is_public_view %}
+                    <p class="text-[11px] text-muted-foreground mt-0.5">
+                        Custo: R$ {{ product.cost_price|localize }} | Margem: {{ product.profit_margin|floatformat:1 }}%
+                    </p>
+                    {% endif %}
                 </div>
                 <div class="flex flex-col items-end gap-1.5 shrink-0">
                     <span
-                        class="badge {% if product.stock > 0 %}badge-secondary{% else %}badge-destructive{% endif %} text-[12px]">
+                        class="badge {% if product.stock == 0 %}badge-destructive{% elif product.is_low_stock %}bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400{% elif product.stock > 0 %}badge-secondary{% else %}badge-destructive{% endif %} text-[12px]">
                         Estoque: {{ product.stock }}
                     </span>
                     <span
                         class="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full {% if product.is_public %}bg-green-100 text-green-700{% else %}bg-gray-100 text-gray-600{% endif %}">
                         {{ product.is_public|yesno:"Público,Privado" }}
                     </span>
+                    {% if product.is_low_stock %}
+                    <span class="text-[10px] text-destructive font-bold flex items-center gap-1 mt-1">
+                        <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> Estoque Crítico
+                    </span>
+                    {% endif %}
                 </div>
             </div>
         </header>
@@ -376,7 +386,7 @@
 
 <!-- Table View -->
 <div id="view-table" class="{% if view_mode == 'grid' %}hidden{% endif %}">
-    <div class="card overflow-hidden">
+    <div class="card overflow-hidden pt-0 pb-0">
         <div class="overflow-x-auto">
             <table class="w-full text-sm text-left">
                 <thead class="bg-muted/50 border-b border-border">
@@ -430,6 +440,11 @@
                             </a>
                         </th>
 
+                        {% if not is_public_view %}
+                        <th class="px-6 py-4 font-semibold">Custo</th>
+                        <th class="px-6 py-4 font-semibold">Margem</th>
+                        {% endif %}
+
                         <th class="px-6 py-4 font-semibold">
                             <a href="?sort=stock&dir={% if current_sort == 'stock' and current_dir == 'asc' %}desc{% else %}asc{% endif %}"
                                 class="flex items-center gap-1.5 hover:text-primary transition-colors group">
@@ -480,7 +495,7 @@
                 </thead>
                 <tbody class="divide-y divide-border">
                     {% for product in products %}
-                    <tr class="hover:bg-muted/30 transition-colors">
+                    <tr class="hover:bg-muted/30 transition-colors {% if product.is_low_stock %}bg-destructive/[0.01] border-l-2 border-l-destructive{% endif %}">
                         {% if not is_public_view %}
                         <td class="px-6 py-4">
                             {% if product.user == user %}
@@ -507,9 +522,16 @@
                             </div>
                         </td>
                         <td class="px-6 py-4 font-medium text-primary">R$ {{ product.price|localize }}</td>
+                        {% if not is_public_view %}
+                        <td class="px-6 py-4 text-muted-foreground">R$ {{ product.cost_price|localize }}</td>
+                        <td class="px-6 py-4 text-muted-foreground">{{ product.profit_margin|floatformat:1 }}%</td>
+                        {% endif %}
                         <td class="px-6 py-4">
                             <span
-                                class="{% if product.stock == 0 %}text-destructive font-bold{% endif %}">{{ product.stock }}</span>
+                                class="{% if product.stock == 0 %}text-destructive font-bold{% elif product.is_low_stock %}text-amber-500 font-bold{% endif %}">{{ product.stock }}</span>
+                            {% if product.is_low_stock %}
+                            <span class="block text-[10px] text-destructive font-bold whitespace-nowrap">Mín: {{ product.min_stock_level }}</span>
+                            {% endif %}
                         </td>
                         <td class="px-6 py-4">
                             <span

@@ -14,8 +14,8 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import CreateView, DeleteView, DetailView, FormView, ListView, TemplateView, UpdateView
 
-from .forms import CategoryForm, MovementForm, ProductForm
-from .models import Category, PriceHistory, Product, ProductMovement
+from .forms import CategoryForm, MovementForm, ProductForm, SupplierForm
+from .models import Category, PriceHistory, Product, ProductMovement, Supplier
 from .utils import apply_product_filters, sort_queryset
 
 
@@ -57,7 +57,6 @@ class ProductListView(LoginRequiredMixin, ListView):
         }
 
         products = cast("Any", Product.objects).for_user(self.request.user)
-
         products = apply_product_filters(
             products,
             q=self.q,
@@ -945,3 +944,131 @@ class SetViewModeView(View):
         if request.headers.get("HX-Request"):
             return HttpResponse(status=204)
         return redirect(request.META.get("HTTP_REFERER", "/"))
+
+
+# --- Supplier Views ---
+class SupplierListView(LoginRequiredMixin, ListView):
+    model = Supplier
+    template_name = "products/supplier_list.html"
+    context_object_name = "suppliers"
+
+    def get_queryset(self):
+        return Supplier.objects.filter(user=self.request.user)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["title"] = "Fornecedores"
+        if self.request.user.is_authenticated:
+            context["view_mode"] = cast("Any", getattr(cast("Any", self.request.user), "profile", None)).view_preferences.get("supplier_list", "grid")
+        else:
+            context["view_mode"] = self.request.session.get("view_mode_supplier_list", "grid")
+        context["view_context"] = "supplier_list"
+        return context
+
+
+class SupplierCreateView(LoginRequiredMixin, CreateView):
+    model = Supplier
+    form_class = SupplierForm
+    template_name = "products/supplier_form.html"
+    success_url = reverse_lazy("supplier_list")
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
+
+    def form_valid(self, form):
+        supplier = form.save(commit=False)
+        supplier.user = self.request.user
+        supplier.save()
+        messages.success(self.request, f'Fornecedor "{supplier.name}" criado com sucesso!')
+        return cast("Any", super()).form_valid(form)
+
+
+class SupplierUpdateView(LoginRequiredMixin, UpdateView):
+    model = Supplier
+    form_class = SupplierForm
+    template_name = "products/supplier_form.html"
+    success_url = reverse_lazy("supplier_list")
+    object: Supplier
+
+    def get_queryset(self):
+        return Supplier.objects.filter(user=self.request.user)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
+
+    def form_valid(self, form):
+        response = cast("Any", super()).form_valid(form)
+        messages.success(self.request, f'Fornecedor "{self.object.name}" atualizado com sucesso!')
+        return response
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["title"] = "Editar Fornecedor"
+        return context
+
+
+class SupplierDeleteView(LoginRequiredMixin, DeleteView):
+    model = Supplier
+    success_url = reverse_lazy("supplier_list")
+    object: Supplier
+
+    def get_queryset(self):
+        return Supplier.objects.filter(user=self.request.user)
+
+    def form_valid(self, form):
+        supplier_name = getattr(self.object, "name", "Fornecedor")
+        response = cast("Any", super()).form_valid(form)
+        messages.success(self.request, f'Fornecedor "{supplier_name}" removido permanentemente.')
+        return response
+
+    def get_template_names(self):
+        if self.request.headers.get("HX-Request"):
+            return ["products/supplier_delete_modal.html"]
+        return ["products/supplier_confirm_delete.html"]
+
+
+# --- Report Views ---
+class ReportDashboardView(LoginRequiredMixin, TemplateView):
+    template_name = "products/report_dashboard.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user_products = Product.objects.filter(user=self.request.user)
+
+        # Valor total do estoque a preço de custo.
+        total_cost_value = user_products.annotate(
+            val=ExpressionWrapper(F("cost_price") * F("stock"), output_field=DecimalField())
+        ).aggregate(total=Sum("val"))["total"] or 0
+
+        # Valor total do estoque a preço de venda.
+        total_sales_value = user_products.annotate(
+            val=ExpressionWrapper(F("price") * F("stock"), output_field=DecimalField())
+        ).aggregate(total=Sum("val"))["total"] or 0
+
+        # Lucro potencial total
+        potential_profit = total_sales_value - total_cost_value
+
+        # Produtos Mais Vendidos baseados no histórico de saídas (ProductMovement OUT)
+        top_selling_movements = ProductMovement.objects.filter(
+            product__user=self.request.user,
+            type="OUT"
+        ).values("product__name", "product__price", "product__cost_price").annotate(
+            total_sold=Sum("quantity"),
+            total_revenue=Sum(ExpressionWrapper(F("quantity") * F("product__price"), output_field=DecimalField())),
+            total_cost=Sum(ExpressionWrapper(F("quantity") * F("product__cost_price"), output_field=DecimalField()))
+        ).annotate(
+            total_profit=ExpressionWrapper(F("total_revenue") - F("total_cost"), output_field=DecimalField())
+        ).order_by("-total_sold")[:5]
+
+        context.update({
+            "title": "Relatório de Giro e Lucratividade",
+            "total_cost_value": total_cost_value,
+            "total_sales_value": total_sales_value,
+            "potential_profit": potential_profit,
+            "top_selling_products": top_selling_movements,
+        })
+        return context

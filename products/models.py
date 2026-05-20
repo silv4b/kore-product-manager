@@ -25,6 +25,20 @@ class Category(models.Model):
         return self.name
 
 
+class Supplier(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="suppliers", null=True, blank=True)
+    name = models.CharField(max_length=255)
+    contact = models.CharField(max_length=255, blank=True, default="")
+    observations = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
 class ProductManager(models.Manager):
     def for_user(self, user):
         if not user.is_authenticated:
@@ -34,10 +48,14 @@ class ProductManager(models.Manager):
     def public(self):
         return self.filter(is_public=True)
 
+    def low_stock(self):
+        return self.filter(stock__lte=models.F("min_stock_level"))
+
 
 class Product(models.Model):
     # 1. Campos do Banco de Dados Primeiro
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="products", null=True, blank=True)
+    supplier = models.ForeignKey("Supplier", on_delete=models.SET_NULL, null=True, blank=True, related_name="products")
     categories = models.ManyToManyField(
         Category,
         related_name="products",
@@ -46,7 +64,9 @@ class Product(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
+    cost_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     stock = models.IntegerField(default=0)
+    min_stock_level = models.IntegerField(default=0)
     is_public = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -62,6 +82,16 @@ class Product(models.Model):
     # 3. Métodos do modelo por último
     def __str__(self):
         return self.name
+
+    @property
+    def profit_margin(self):
+        if self.cost_price > 0:
+            return ((self.price - self.cost_price) / self.cost_price) * 100
+        return 100.00 if self.price > 0 else 0.00
+
+    @property
+    def is_low_stock(self):
+        return self.stock <= self.min_stock_level
 
 
 class PriceHistory(models.Model):

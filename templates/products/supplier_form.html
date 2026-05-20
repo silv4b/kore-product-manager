@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="max-w-xl mx-auto mt-10">
+    <div class="card">
+        <header>
+            <h2 class="text-2xl font-bold">{% if form.instance.pk %}Editar Fornecedor{% else %}Novo Fornecedor{% endif %}</h2>
+            <p>Gerencie os detalhes deste fornecedor para contato e compras de insumos.</p>
+        </header>
+
+        {% if form.errors %}
+        <div class="px-6 pt-2">
+            <div class="alert alert-destructive">
+                <section>
+                    <p>Por favor, corrija os erros abaixo.</p>
+                </section>
+            </div>
+        </div>
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %}
+
+            <section class="flex flex-col gap-6 py-6 px-6">
+                <!-- Nome -->
+                <div class="field">
+                    <label for="id_name" class="text-foreground font-medium mb-1.5">Nome do Fornecedor</label>
+                    {{ form.name }}
+                    {% if form.name.errors %}<p class="text-destructive text-xs mt-1">{{ form.name.errors.0 }}</p>{% endif %}
+                </div>
+
+                <!-- Contato -->
+                <div class="field">
+                    <label for="id_contact" class="text-foreground font-medium mb-1.5">Contato (Telefone, E-mail, etc.)</label>
+                    {{ form.contact }}
+                    {% if form.contact.errors %}<p class="text-destructive text-xs mt-1">{{ form.contact.errors.0 }}</p>{% endif %}
+                </div>
+
+                <!-- Observações -->
+                <div class="field">
+                    <label for="id_observations" class="text-foreground font-medium mb-1.5">Observações (Opcional)</label>
+                    {{ form.observations }}
+                    {% if form.observations.errors %}<p class="text-destructive text-xs mt-1">{{ form.observations.errors.0 }}</p>{% endif %}
+                </div>
+            </section>
+
+            <footer class="flex justify-end gap-3 pt-6 border-t border-border mt-4 px-6">
+                <a href="{% url 'supplier_list' %}"
+                    class="btn btn-ghost bg-transparent border border-border text-foreground hover:bg-muted flex-1 md:flex-none justify-center font-medium">
+                    Cancelar
+                </a>
+                <button type="submit"
+                    class="btn btn-primary flex-1 md:flex-none justify-center font-bold px-8">
+                    Salvar
+                </button>
+            </footer>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const nameInput = document.getElementById('id_name');
+        if (nameInput) nameInput.focus();
+    });
+</script>
+{% endblock %}

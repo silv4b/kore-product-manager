@@ -18,25 +18,51 @@
 
         <section class="p-6 sm:p-8 grid grid-cols-1 md:grid-cols-2 gap-6 overflow-y-auto flex-1 custom-scrollbar">
             <div class="space-y-6">
-                <div>
-                    <label class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Preço de
-                        Venda</label>
-                    <p class="text-3xl font-extrabold text-primary">R$ {{ product.price|localize }}</p>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Preço de Venda</label>
+                        <p class="text-2xl font-extrabold text-primary">R$ {{ product.price|localize }}</p>
+                    </div>
+                    {% if user.is_authenticated and product.user == user %}
+                    <div>
+                        <label class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Preço de Custo</label>
+                        <p class="text-2xl font-extrabold text-muted-foreground">R$ {{ product.cost_price|localize }}</p>
+                    </div>
+                    {% endif %}
                 </div>
 
+                {% if user.is_authenticated and product.user == user %}
                 <div>
-                    <label class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Estoque
-                        Disponível</label>
-                    <div class="flex items-center gap-2 mt-1">
-                        <span
-                            class="text-2xl font-bold {% if product.stock > 0 %}text-foreground{% else %}text-destructive{% endif %}">
+                    <label class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Margem de Lucro</label>
+                    <p class="text-xl font-bold text-foreground">{{ product.profit_margin|floatformat:2 }}%</p>
+                </div>
+                {% endif %}
+
+                <div>
+                    <label class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Estoque Disponível</label>
+                    <div class="flex flex-wrap items-center gap-2 mt-1">
+                        <span class="text-2xl font-bold {% if product.stock > 0 %}text-foreground{% else %}text-destructive{% endif %}">
                             {{ product.stock }} unidades
                         </span>
-                        {% if product.stock <= 5 and product.stock > 0 %}
+                        {% if product.is_low_stock %}
+                        <span class="badge badge-destructive text-[10px] flex items-center gap-1 bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-400">
+                            <i data-lucide="alert-triangle" class="w-3 h-3"></i> Estoque Crítico (Mín: {{ product.min_stock_level }})
+                        </span>
+                        {% elif product.stock <= 5 and product.stock > 0 %}
                         <span class="badge badge-warning text-[10px]">Estoque Baixo</span>
                         {% endif %}
                     </div>
                 </div>
+
+                {% if product.supplier %}
+                <div>
+                    <label class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Fornecedor</label>
+                    <p class="text-sm font-medium text-foreground mt-1">{{ product.supplier.name }}</p>
+                    {% if product.supplier.contact %}
+                    <p class="text-xs text-muted-foreground mt-0.5">{{ product.supplier.contact }}</p>
+                    {% endif %}
+                </div>
+                {% endif %}
 
                 <div>
                     <label

@@ -42,7 +42,18 @@
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="field">
-                        <label for="id_price" class="text-foreground font-medium mb-1.5">Preço (R$)</label>
+                        <label for="id_cost_price" class="text-foreground font-medium mb-1.5">Preço de Custo (R$)</label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
+                            <input type="text" name="cost_price" id="id_cost_price" placeholder="0,00"
+                                value="{{ form.cost_price.value|localize|default:'' }}" class="input w-full pl-10">
+                        </div>
+                        {% if form.cost_price.errors %}<p class="text-destructive text-xs mt-1">{{ form.cost_price.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div class="field">
+                        <label for="id_price" class="text-foreground font-medium mb-1.5">Preço de Venda (R$)</label>
                         <div class="relative">
                             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
                             <input type="text" name="price" id="id_price" placeholder="0,00"
@@ -51,7 +62,9 @@
                         {% if form.price.errors %}<p class="text-destructive text-xs mt-1">{{ form.price.errors.0 }}</p>
                         {% endif %}
                     </div>
+                </div>
 
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="field">
                         <label for="id_stock" class="text-foreground font-medium mb-1.5">Quantidade em Estoque</label>
                         <input type="number" name="stock" id="id_stock" placeholder="0"
@@ -59,6 +72,26 @@
                         {% if form.stock.errors %}<p class="text-destructive text-xs mt-1">{{ form.stock.errors.0 }}</p>
                         {% endif %}
                     </div>
+
+                    <div class="field">
+                        <label for="id_min_stock_level" class="text-foreground font-medium mb-1.5">Estoque Mínimo (Alerta)</label>
+                        <input type="number" name="min_stock_level" id="id_min_stock_level" placeholder="0"
+                            value="{{ form.min_stock_level.value|unlocalize|default:'0' }}" class="input w-full">
+                        {% if form.min_stock_level.errors %}<p class="text-destructive text-xs mt-1">{{ form.min_stock_level.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label for="id_supplier" class="text-foreground font-medium mb-1.5">Fornecedor</label>
+                    <select name="supplier" id="id_supplier" class="select w-full">
+                        <option value="">---------</option>
+                        {% for choice in form.supplier.field.queryset %}
+                            <option value="{{ choice.pk }}" {% if form.supplier.value|stringformat:"s" == choice.pk|stringformat:"s" %}selected{% endif %}>{{ choice.name }}</option>
+                        {% endfor %}
+                    </select>
+                    {% if form.supplier.errors %}<p class="text-destructive text-xs mt-1">{{ form.supplier.errors.0 }}</p>
+                    {% endif %}
                 </div>
 
                 <div class="field">
@@ -127,25 +160,30 @@
 
         // --- Price Formatting ---
         const priceInput = document.getElementById('id_price');
-        if (priceInput) {
-            const formatPrice = (val) => {
-                let value = val.replace(/\D/g, '');
-                if (value === '') return '';
-                value = (value / 100).toFixed(2) + '';
-                value = value.replace(".", ",");
-                value = value.replace(/(\d)(\d{3})(\d{3}),/g, "$1.$2.$3,");
-                value = value.replace(/(\d)(\d{3}),/g, "$1.$2,");
-                return value;
-            };
+        const costPriceInput = document.getElementById('id_cost_price');
+        
+        const formatPrice = (val) => {
+            let value = val.replace(/\D/g, '');
+            if (value === '') return '';
+            value = (value / 100).toFixed(2) + '';
+            value = value.replace(".", ",");
+            value = value.replace(/(\d)(\d{3})(\d{3}),/g, "$1.$2.$3,");
+            value = value.replace(/(\d)(\d{3}),/g, "$1.$2,");
+            return value;
+        };
 
-            priceInput.addEventListener('input', (e) => {
+        const setupPriceInput = (el) => {
+            if (!el) return;
+            el.addEventListener('input', (e) => {
                 e.target.value = formatPrice(e.target.value);
             });
-
-            if (priceInput.value) {
-                priceInput.value = formatPrice(priceInput.value);
+            if (el.value) {
+                el.value = formatPrice(el.value);
             }
-        }
+        };
+
+        setupPriceInput(priceInput);
+        setupPriceInput(costPriceInput);
 
         // --- Multi-Category Selector Logic ---
         const searchInput = document.getElementById('category-search');
