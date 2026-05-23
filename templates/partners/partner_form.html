@@ -37,7 +37,7 @@
             <section class="p-6 space-y-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {% for field in form %}
-                    <div class="field flex flex-col gap-1.5 {% if field.name == 'address' %}md:col-span-2{% endif %}">
+                    <div class="field flex flex-col gap-1.5">
                         <label for="{{ field.id_for_label }}"
                             class="text-sm font-semibold text-foreground flex items-center gap-1">
                             {{ field.label }}

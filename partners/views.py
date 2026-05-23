@@ -57,7 +57,7 @@ def customer_list(request):
 @login_required
 def customer_create(request):
     if request.method == "POST":
-        form = CustomerForm(request.POST)
+        form = CustomerForm(request.POST, user=request.user)
         if form.is_valid():
             customer = form.save(commit=False)
             customer.user = request.user
@@ -65,7 +65,7 @@ def customer_create(request):
             messages.success(request, f'Cliente "{customer.name}" criado com sucesso!')
             return redirect("customer_list")
     else:
-        form = CustomerForm()
+        form = CustomerForm(user=request.user)
     return render(
         request,
         "partners/partner_form.html",
@@ -77,7 +77,7 @@ def customer_create(request):
 def customer_update(request, pk):
     customer = get_object_or_404(Customer, pk=pk, user=request.user)
     if request.method == "POST":
-        form = CustomerForm(request.POST, instance=customer)
+        form = CustomerForm(request.POST, instance=customer, user=request.user)
         if form.is_valid():
             form.save()
             messages.success(
@@ -85,7 +85,7 @@ def customer_update(request, pk):
             )
             return redirect("customer_list")
     else:
-        form = CustomerForm(instance=customer)
+        form = CustomerForm(instance=customer, user=request.user)
     return render(
         request,
         "partners/partner_form.html",
@@ -147,7 +147,7 @@ def supplier_list(request):
 @login_required
 def supplier_create(request):
     if request.method == "POST":
-        form = SupplierForm(request.POST)
+        form = SupplierForm(request.POST, user=request.user)
         if form.is_valid():
             supplier = form.save(commit=False)
             supplier.user = request.user
@@ -157,7 +157,7 @@ def supplier_create(request):
             )
             return redirect("partner_supplier_list")
     else:
-        form = SupplierForm()
+        form = SupplierForm(user=request.user)
     return render(
         request,
         "partners/partner_form.html",
@@ -169,7 +169,7 @@ def supplier_create(request):
 def supplier_update(request, pk):
     supplier = get_object_or_404(Supplier, pk=pk, user=request.user)
     if request.method == "POST":
-        form = SupplierForm(request.POST, instance=supplier)
+        form = SupplierForm(request.POST, instance=supplier, user=request.user)
         if form.is_valid():
             form.save()
             messages.success(
@@ -177,7 +177,7 @@ def supplier_update(request, pk):
             )
             return redirect("partner_supplier_list")
     else:
-        form = SupplierForm(instance=supplier)
+        form = SupplierForm(instance=supplier, user=request.user)
     return render(
         request,
         "partners/partner_form.html",

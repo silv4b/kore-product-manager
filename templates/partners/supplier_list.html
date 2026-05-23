@@ -74,6 +74,9 @@
                                 {% endif %}
                             </a>
                         </th>
+                        <th class="px-6 py-4 font-semibold">Regime Trib.</th>
+                        <th class="px-6 py-4 font-semibold">Prazo Entrega</th>
+                        <th class="px-6 py-4 font-semibold">Status</th>
                         <th class="px-6 py-4 font-semibold text-right">Ações</th>
                     </tr>
                     {% endwith %}
@@ -90,6 +93,19 @@
                         <td class="px-6 py-4 text-muted-foreground">{{ supplier.cnpj|mask_cnpj }}</td>
                         <td class="px-6 py-4 text-muted-foreground">{{ supplier.email|default:"-" }}</td>
                         <td class="px-6 py-4 text-muted-foreground">{{ supplier.phone|mask_phone }}</td>
+                        <td class="px-6 py-4">
+                            {% if supplier.regime_tributario %}
+                            <span class="text-xs font-medium">{{ supplier.get_regime_tributario_display }}</span>
+                            {% else %}
+                            <span class="text-muted-foreground text-xs">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-muted-foreground">{{ supplier.prazo_entrega_medio|default:"-" }}</td>
+                        <td class="px-6 py-4">
+                            <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full {% if supplier.status == 'ativo' %}bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-400{% else %}bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400{% endif %}">
+                                {{ supplier.get_status_display }}
+                            </span>
+                        </td>
                         <td class="px-6 py-4 text-right">
                             <div class="flex justify-end gap-2">
                                 <a href="{% url 'partner_supplier_update' supplier.pk %}" class="btn btn-sm btn-ghost p-2"
@@ -105,7 +121,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="px-6 py-12 text-center text-muted-foreground">
+                        <td colspan="8" class="px-6 py-12 text-center text-muted-foreground">
                             <i data-lucide="truck" class="w-12 h-12 mx-auto mb-4 opacity-20"></i>
                             <p>Nenhum fornecedor cadastrado.</p>
                         </td>
