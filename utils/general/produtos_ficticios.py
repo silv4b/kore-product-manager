@@ -123,6 +123,12 @@ for _ in range(1000):
 
     estoque = random.randint(5, 150)
     estoque_minimo = random.randint(2, min(20, estoque))
+    estoque_maximo = random.randint(estoque, estoque * 3)
+    quantidade_reservada = random.randint(0, max(0, estoque // 3))
+    lote = f"LOT-{random.randint(2025, 2026)}-{random.randint(1000, 9999)}"
+    data_validade = (
+        datetime.datetime(2026, 5, 20) + datetime.timedelta(days=random.randint(30, 730))
+    ).strftime("%d/%m/%Y")
 
     categorias = pt["category"]
     fornecedor = random.choice(fornecedores)
@@ -140,6 +146,10 @@ for _ in range(1000):
             "preco_custo": preco_custo,
             "estoque": estoque,
             "estoque_minimo": estoque_minimo,
+            "quantidade_reservada": quantidade_reservada,
+            "estoque_maximo": estoque_maximo,
+            "lote": lote,
+            "data_validade": data_validade,
             "categorias": categorias,
             "fornecedor": fornecedor,
             "publico": publico,
