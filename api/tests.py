@@ -65,10 +65,13 @@ def product(user, category, supplier):
         name="Teclado",
         price=Decimal("150.00"),
         cost_price=Decimal("100.00"),
-        stock=10,
         supplier=supplier
     )
     p.categories.add(category)
+    from products.models import Stock, StorageLocation
+    local = StorageLocation.objects.filter(user=user).first()
+    if local:
+        Stock.objects.create(product=p, local=local, quantidade_atual=10)
     return p
 
 
@@ -215,7 +218,7 @@ class TestProductAPI:
         """
         Testa listagem de produtos. Verifica se isola por usuário.
         """
-        other_prod = Product.objects.create(user=other_user, name="Mouse AMD", price=50.00, stock=5)
+        other_prod = Product.objects.create(user=other_user, name="Mouse AMD", price=50.00)
         response = auth_client.get(reverse("product-list"))
         assert response.status_code == status.HTTP_200_OK
 
@@ -232,8 +235,6 @@ class TestProductAPI:
             "description": "Mouse RGB",
             "price": "80.00",
             "cost_price": "40.00",
-            "min_stock_level": 5,
-            "stock": 15,
             "is_public": False,
             "category_ids": [category.id],
             "supplier_id": supplier.id,
@@ -252,12 +253,12 @@ class TestProductAPI:
         """
         Testa validações de dados inválidos ao criar produto.
         """
-        data = {"price": "50.00", "stock": 10}
+        data = {"price": "50.00"}
         response = auth_client.post(reverse("product-list"), data)
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "name" in response.data
 
-        data = {"name": "Teclado", "price": "texto", "stock": 10}
+        data = {"name": "Teclado", "price": "texto"}
         response = auth_client.post(reverse("product-list"), data)
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
@@ -315,6 +316,8 @@ class TestMovementAPI:
         Testa a realização de um movimento de entrada (IN) de estoque.
         Verifica se o estoque é atualizado corretamente.
         """
+        from products.models import Stock
+
         url = reverse("product-movement", kwargs={"pk": product.id})
         data = {"type": "IN", "quantity": 5, "reason": "Compra de lote"}
 
@@ -322,14 +325,16 @@ class TestMovementAPI:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["quantity"] == 5
 
-        product.refresh_from_db()
-        assert product.stock == 15
+        stock = Stock.objects.get(product=product)
+        assert stock.quantidade_atual == 15
 
     def test_perform_out_movement_insufficient_stock(self, auth_client, product):
         """
         Garante que saídas que ultrapassam o estoque disponível retornam erro 400.
         E que o estoque não seja modificado no banco de dados.
         """
+        from products.models import Stock
+
         url = reverse("product-movement", kwargs={"pk": product.id})
         data = {"type": "OUT", "quantity": 11, "reason": "Venda"}
 
@@ -337,21 +342,23 @@ class TestMovementAPI:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "error" in response.data
 
-        product.refresh_from_db()
-        assert product.stock == 10
+        stock = Stock.objects.get(product=product)
+        assert stock.quantidade_atual == 10
 
     def test_perform_out_movement_happy_path(self, auth_client, product):
         """
         Testa saída de estoque com saldo suficiente.
         """
+        from products.models import Stock
+
         url = reverse("product-movement", kwargs={"pk": product.id})
         data = {"type": "OUT", "quantity": 4, "reason": "Venda"}
 
         response = auth_client.post(url, data)
         assert response.status_code == status.HTTP_201_CREATED
 
-        product.refresh_from_db()
-        assert product.stock == 6
+        stock = Stock.objects.get(product=product)
+        assert stock.quantidade_atual == 6
 
     def test_perform_movement_invalid_quantity(self, auth_client, product):
         """
@@ -371,7 +378,7 @@ class TestMovementAPI:
         """
         ProductMovement.objects.create(product=product, type="IN", quantity=2, reason="Ajuste")
 
-        other_prod = Product.objects.create(user=other_user, name="Outro", price=10.00, stock=5)
+        other_prod = Product.objects.create(user=other_user, name="Outro", price=10.00)
         other_mov = ProductMovement.objects.create(product=other_prod, type="IN", quantity=4, reason="Outro ajuste")
 
         response = auth_client.get(reverse("movement-list"))

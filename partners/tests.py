@@ -40,7 +40,8 @@ def customer(user):
         phone="11999999999",
         cpf="12345678909",
         birth_date=date(1990, 5, 20),
-        address="Rua A, 123"
+        street="Rua A",
+        number="123"
     )
 
 
@@ -55,7 +56,8 @@ def supplier(user):
         company_name="LogTech LTDA",
         contact_person="Carlos",
         website="https://logtech.com",
-        address="Av. B, 456"
+        street="Av. B",
+        number="456"
     )
 
 
@@ -87,7 +89,8 @@ class TestPartnerForms:
             "phone": "11988887777",
             "cpf": "11122233344",
             "birth_date": "1995-10-12",
-            "address": "Rua das Flores, 4"
+            "street": "Rua das Flores",
+            "number": "4"
         }
         form = CustomerForm(data)
         assert form.is_valid()
@@ -158,7 +161,8 @@ class TestPartnerViews:
             "phone": "21988887777",
             "cpf": "98765432100",
             "birth_date": "1988-03-25",
-            "address": "Rua C, 99"
+            "street": "Rua C",
+            "number": "99"
         }
         response = logged_client.post(url, data)
         assert response.status_code == 302

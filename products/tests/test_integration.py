@@ -35,7 +35,6 @@ class ProductWorkflowTest(BaseTestCase):
             "name": "Notebook Lenovo Thinkpad",
             "description": "Notebook Top das Galáxias",
             "price": "5299,99",
-            "stock": 5,
             "is_public": True,
             "categories": [category.pk],
         }
@@ -69,7 +68,6 @@ class ProductWorkflowTest(BaseTestCase):
             "name": "Updated Laptop",
             "description": "Updated description",
             "price": "9999,99",
-            "stock": 3,
             "is_public": False,
         }
 
@@ -518,7 +516,6 @@ class ErrorHandlingWorkflowTest(BaseTestCase):
             {
                 "name": "",  # Erro: Campo obrigatório
                 "price": "not_a_num",  # Erro: Formato inválido
-                "stock": -5,  # Erro: Valor negativo (se houver validação)
             },
         )
 
@@ -530,7 +527,6 @@ class ErrorHandlingWorkflowTest(BaseTestCase):
         self.assertFalse(form.is_valid())
         self.assertIn("name", form.errors)
         self.assertIn("price", form.errors)
-        self.assertIn("stock", form.errors)
 
         # Teste de criação de categoria inválida (Slug duplicado)
         CategoryFactory.create(slug="test-slug", user=self.user)

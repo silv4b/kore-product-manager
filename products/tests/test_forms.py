@@ -25,7 +25,6 @@ class ProductFormTest(TestCase):
             "name": "Test Product",
             "description": "Test description",
             "price": "99,99",
-            "stock": 10,
             "is_public": True,
             "categories": [self.category.id],
         }
@@ -39,7 +38,7 @@ class ProductFormTest(TestCase):
 
         self.assertEqual(product.name, "Test Product")
         self.assertEqual(product.price, Decimal("99.99"))
-        self.assertEqual(product.stock, 10)
+        self.assertEqual(product.stock, 0)
         self.assertTrue(product.is_public)
         self.assertIn(self.category, product.categories.all())
 
@@ -48,7 +47,7 @@ class ProductFormTest(TestCase):
         Testa a validação de preço com separador decimal vírgula (formato brasileiro).
         Verifica que '199,50' é convertido corretamente para Decimal('199.50').
         """
-        form_data = {"name": "Test Product", "price": "199,50", "stock": 5}
+        form_data = {"name": "Test Product", "price": "199,50"}
         form = ProductForm(data=form_data)
 
         self.assertTrue(form.is_valid())
@@ -62,7 +61,6 @@ class ProductFormTest(TestCase):
         form_data = {
             "name": "Test Product",
             "price": "199,50",  # Use comma as decimal separator (Brazilian format)
-            "stock": 5,
             "categories": [],  # Add empty categories
         }
         form = ProductForm(data=form_data)
@@ -75,7 +73,7 @@ class ProductFormTest(TestCase):
         Testa a validação de preço com separador de milhares.
         Verifica que '1.999,50' é convertido corretamente para Decimal('1999.50').
         """
-        form_data = {"name": "Test Product", "price": "1.999,50", "stock": 5}
+        form_data = {"name": "Test Product", "price": "1.999,50"}
         form = ProductForm(data=form_data)
 
         self.assertTrue(form.is_valid())
@@ -89,7 +87,6 @@ class ProductFormTest(TestCase):
         form_data = {
             "name": "Test Product",
             "price": "0,00",  # Use valid empty equivalent instead of empty string
-            "stock": 5,
         }
         form = ProductForm(data=form_data)
 
@@ -101,7 +98,7 @@ class ProductFormTest(TestCase):
         Testa a validação de preço inválido.
         Verifica que um preço com formato inválido retorna erro.
         """
-        form_data = {"name": "Test Product", "price": "invalid_price", "stock": 5}
+        form_data = {"name": "Test Product", "price": "invalid_price"}
         form = ProductForm(data=form_data)
 
         self.assertFalse(form.is_valid())
@@ -130,9 +127,6 @@ class ProductFormTest(TestCase):
         # Check name input has correct class
         self.assertIn("input w-full", form["name"].field.widget.attrs["class"])
 
-        # Check stock input has correct class
-        self.assertIn("input w-full", form["stock"].field.widget.attrs["class"])
-
     def test_product_form_placeholders(self):
         """
         Testa os placeholders dos campos do formulário de produto.
@@ -145,7 +139,6 @@ class ProductFormTest(TestCase):
         self.assertEqual(
             form["description"].field.widget.attrs["placeholder"], "Descrição"
         )
-        self.assertEqual(form["stock"].field.widget.attrs["placeholder"], "0")
 
 
 class CategoryFormTest(TestCase):
@@ -273,7 +266,6 @@ class FormIntegrationTest(TestCase):
         form_data = {
             "name": "Updated Product",
             "price": "150,00",
-            "stock": 20,
             "is_public": True,
         }
         form = ProductForm(data=form_data, instance=product)
@@ -283,7 +275,7 @@ class FormIntegrationTest(TestCase):
 
         self.assertEqual(updated_product.name, "Updated Product")
         self.assertEqual(updated_product.price, Decimal("150.00"))
-        self.assertEqual(updated_product.stock, 20)
+        self.assertEqual(updated_product.stock, 0)
         self.assertTrue(updated_product.is_public)
         self.assertEqual(
             updated_product.user, self.user

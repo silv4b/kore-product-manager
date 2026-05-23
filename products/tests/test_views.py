@@ -137,7 +137,6 @@ class ProductViewTest(BaseTestCase):
             "name": "New Product",
             "description": "New description",
             "price": "99,99",
-            "stock": 10,
             "is_public": True,
             "categories": [
                 self.category.pk
@@ -148,17 +147,15 @@ class ProductViewTest(BaseTestCase):
         response = self.client.post(reverse("product_create"), data=form_data)
 
         # 3. Verifica o redirecionamento de SUCESSO
-        # assertRedirects é melhor que assertEqual(302) + assertIn porque valida o destino final
         self.assertRedirects(response, reverse("product_list"))
 
         # 4. Verifica se o objeto realmente existe no Banco de Dados
-        # Usamos .filter().first() ou .get()
         product = Product.objects.get(name="New Product")
 
         # 5. Validações de integridade
         self.assertEqual(product.user, self.user)
         self.assertEqual(product.price, Decimal("99.99"))
-        self.assertEqual(product.stock, 10)
+        self.assertEqual(product.stock, 0)
         self.assertTrue(product.is_public)
 
         # Dica: Verifique se a categoria foi associada corretamente (se for ManyToMany)
@@ -169,7 +166,6 @@ class ProductViewTest(BaseTestCase):
         form_data = {
             "name": " ",  # Required field missing
             "price": "invalid",
-            "stock": "invalid",
         }
 
         response = self.client.post(reverse("product_create"), data=form_data)
@@ -184,7 +180,6 @@ class ProductViewTest(BaseTestCase):
         # Você pode verificar erros específicos em campos
         self.assertIn("name", form.errors)
         self.assertIn("price", form.errors)
-        self.assertIn("stock", form.errors)
 
         # 3. Garantimos que nenhum produto foi criado no banco de dados
         self.assertEqual(Product.objects.count(), 0)
@@ -206,13 +201,12 @@ class ProductViewTest(BaseTestCase):
 
     def test_product_update_view_post_valid(self):
         """Test product update with valid data"""
-        product = ProductFactory.create(user=self.user, name="Original Name")
+        product = ProductFactory.create(user=self.user, name="Original Name", stock=20)
 
         form_data = {
             "name": "Updated Name",
             "description": "Updated description",
             "price": "150,00",  # Changed from "150,00" to "150.00"
-            "stock": 20,
             "is_public": False,
         }
         # Realiza o POST
@@ -628,7 +622,6 @@ class MessageTest(BaseTestCase):
             {
                 "name": product_name,
                 "price": "100.00",
-                "stock": 10,
             },
             follow=True,  # Essencial para capturar a mensagem após o redirecionamento
         )

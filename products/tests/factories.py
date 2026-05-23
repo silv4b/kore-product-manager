@@ -64,12 +64,12 @@ class ProductFactory:
     def create(cls, **kwargs):
         cls._counter += 1
         user = kwargs.pop("user", UserFactory.create())
+        stock_qty = kwargs.pop("stock", 0)
         defaults = {
             "user": user,
             "name": f"Test Product {cls._counter}",
             "description": "Test description",
             "price": Decimal("10.00"),
-            "stock": 0,  # Default value as per model
             "is_public": False,
         }
         defaults.update(kwargs)
@@ -78,6 +78,13 @@ class ProductFactory:
         # Add categories if provided
         if "categories" in kwargs:
             product.categories.set(kwargs["categories"])
+
+        if stock_qty > 0:
+            from products.models import Stock, StorageLocation
+            local = StorageLocation.objects.filter(user=user).first()
+            if not local:
+                local = StorageLocation.objects.create(user=user, name="Depósito Principal")
+            Stock.objects.create(product=product, local=local, quantidade_atual=stock_qty)
 
         return product
 
