@@ -1,14 +1,14 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .models import Category, PriceHistory, Product
+from .models import Category, PriceHistory, Product, Stock, StorageLocation
 
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
     list_display = [
-        "name", "price", "cost_price", "profit_margin_display", "stock",
-        "min_stock_level", "stock_status", "supplier", "is_public", "user", "created_at"
+        "name", "price", "cost_price", "profit_margin_display",
+        "stock_status", "supplier", "is_public", "user", "created_at"
     ]
     list_filter = ["is_public", "categories", "created_at", "supplier"]
     search_fields = ["name", "description"]
@@ -40,3 +40,16 @@ class PriceHistoryAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
         # Previne criação manual - apenas via signal
         return False
+
+
+@admin.register(Stock)
+class StockAdmin(admin.ModelAdmin):
+    list_display = ["product", "local", "quantidade_atual", "estoque_minimo", "lote", "data_validade"]
+    list_filter = ["local"]
+    search_fields = ["product__name"]
+
+
+@admin.register(StorageLocation)
+class StorageLocationAdmin(admin.ModelAdmin):
+    list_display = ["name", "type", "is_active", "user"]
+    list_filter = ["type", "is_active"]

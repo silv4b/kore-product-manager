@@ -71,6 +71,12 @@
                             </a>
                         </li>
                         <li>
+                            <a href="{% url 'storage_location_list' %}">
+                                <i data-lucide="warehouse" class="w-4 h-4"></i>
+                                <span>Locais</span>
+                            </a>
+                        </li>
+                        <li>
                             <a href="{% url 'price_history_overview' %}">
                                 <i data-lucide="history" class="w-4 h-4"></i>
                                 <span>Preços</span>
@@ -100,6 +106,19 @@
                             <a href="{% url 'report_dashboard' %}">
                                 <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
                                 <span>Giro & Lucratividade</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Group 5: Sistema -->
+                <div role="group" aria-labelledby="group-label-system">
+                    <h3 id="group-label-system">Sistema</h3>
+                    <ul>
+                        <li>
+                            <a href="{% url 'field_config' %}">
+                                <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                                <span>Campos Obrigatórios</span>
                             </a>
                         </li>
                     </ul>

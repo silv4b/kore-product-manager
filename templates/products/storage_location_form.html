@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="max-w-xl mx-auto mt-10">
+    <div class="card">
+        <header>
+            <h2 class="text-2xl font-bold">{{ title }}</h2>
+            <p>Gerencie os detalhes do local de armazenamento.</p>
+        </header>
+
+        {% if form.errors %}
+        <div class="px-6 pt-2">
+            <div class="alert alert-destructive">
+                <section>
+                    <p>Por favor, corrija os erros abaixo.</p>
+                </section>
+            </div>
+        </div>
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %}
+
+            <section class="flex flex-col gap-6 py-6 px-6">
+                <div class="field">
+                    <label for="id_name" class="text-foreground font-medium mb-1.5">Nome do Local</label>
+                    {{ form.name }}
+                    {% if form.name.errors %}<p class="text-destructive text-xs mt-1">{{ form.name.errors.0 }}</p>{% endif %}
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="field">
+                        <label for="id_type" class="text-foreground font-medium mb-1.5">Tipo</label>
+                        {{ form.type }}
+                        {% if form.type.errors %}<p class="text-destructive text-xs mt-1">{{ form.type.errors.0 }}</p>{% endif %}
+                    </div>
+
+                    <div class="field flex items-end pb-2">
+                        <label class="flex items-center gap-3 cursor-pointer select-none">
+                            {{ form.is_active }}
+                            <div>
+                                <span class="block font-medium text-sm">Local Ativo</span>
+                                <span class="block text-xs text-muted-foreground">Locais inativos não são usados em novas movimentações.</span>
+                            </div>
+                        </label>
+                        {% if form.is_active.errors %}<p class="text-destructive text-xs mt-1">{{ form.is_active.errors.0 }}</p>{% endif %}
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label for="id_description" class="text-foreground font-medium mb-1.5">Descrição (Opcional)</label>
+                    {{ form.description }}
+                    {% if form.description.errors %}<p class="text-destructive text-xs mt-1">{{ form.description.errors.0 }}</p>{% endif %}
+                </div>
+            </section>
+
+            <footer class="flex justify-end gap-3 pt-6 border-t border-border mt-4 px-6">
+                <a href="{% url 'storage_location_list' %}"
+                    class="btn btn-ghost bg-transparent border border-border text-foreground hover:bg-muted flex-1 md:flex-none justify-center font-medium">
+                    Cancelar
+                </a>
+                <button type="submit"
+                    class="btn btn-primary flex-1 md:flex-none justify-center font-bold px-8">
+                    {{ title }}
+                </button>
+            </footer>
+        </form>
+    </div>
+</div>
+{% endblock %}

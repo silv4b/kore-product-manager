@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="flex flex-col gap-6">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <h2 class="text-3xl font-bold tracking-tight">Locais de Armazenamento</h2>
+            <p class="text-muted-foreground">Gerencie depósitos, lojas e outros locais do seu estoque.</p>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <a href="{% url 'storage_location_create' %}"
+                class="btn btn-ghost bg-transparent border border-border shadow-none text-foreground hover:bg-muted font-medium h-10 px-4 flex items-center gap-2">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+                Novo Local
+            </a>
+        </div>
+    </div>
+
+    <div class="card overflow-hidden pt-0 pb-0">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left">
+                <thead class="bg-muted/50 border-b border-border">
+                    {% with current_sort=request.GET.sort|default:"name" current_dir=request.GET.dir|default:"asc" %}
+                    <tr>
+                        <th class="px-6 py-4 font-semibold">
+                            <a href="?sort=name&dir={% if current_sort == 'name' and current_dir == 'asc' %}desc{% else %}asc{% endif %}"
+                                class="flex items-center gap-1.5 hover:text-primary transition-colors group">
+                                Nome
+                                {% if current_sort == 'name' %}
+                                <i data-lucide="chevron-{% if current_dir == 'asc' %}up{% else %}down{% endif %}" class="w-4 h-4 text-primary"></i>
+                                {% else %}
+                                <i data-lucide="arrow-up-down" class="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="px-6 py-4 font-semibold">
+                            <a href="?sort=type&dir={% if current_sort == 'type' and current_dir == 'asc' %}desc{% else %}asc{% endif %}"
+                                class="flex items-center gap-1.5 hover:text-primary transition-colors group">
+                                Tipo
+                                {% if current_sort == 'type' %}
+                                <i data-lucide="chevron-{% if current_dir == 'asc' %}up{% else %}down{% endif %}" class="w-4 h-4 text-primary"></i>
+                                {% else %}
+                                <i data-lucide="arrow-up-down" class="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="px-6 py-4 font-semibold">Descrição</th>
+                        <th class="px-6 py-4 font-semibold">Ativo</th>
+                        <th class="px-6 py-4 font-semibold text-right">Ações</th>
+                    </tr>
+                    {% endwith %}
+                </thead>
+                <tbody class="divide-y divide-border">
+                    {% for location in locations %}
+                    <tr class="hover:bg-muted/30 transition-colors">
+                        <td class="px-6 py-4 font-medium text-foreground">{{ location.name }}</td>
+                        <td class="px-6 py-4">
+                            <span class="badge text-[10px] py-0.5 px-2">
+                                {{ location.get_type_display }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-muted-foreground max-w-xs truncate">{{ location.description|default:"-" }}</td>
+                        <td class="px-6 py-4">
+                            {% if location.is_active %}
+                            <span class="text-green-600 dark:text-green-400 text-xs font-bold flex items-center gap-1">
+                                <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Sim
+                            </span>
+                            {% else %}
+                            <span class="text-muted-foreground text-xs font-bold flex items-center gap-1">
+                                <i data-lucide="x-circle" class="w-3.5 h-3.5"></i> Não
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <div class="flex justify-end gap-2">
+                                <a href="{% url 'storage_location_update' location.pk %}"
+                                    class="btn btn-sm btn-ghost bg-transparent border border-border text-foreground hover:bg-muted p-2"
+                                    title="Editar">
+                                    <i data-lucide="pencil" class="w-4 h-4"></i>
+                                </a>
+                                <a href="{% url 'storage_location_delete' location.pk %}"
+                                    class="btn btn-sm btn-ghost bg-transparent border border-border text-destructive hover:bg-destructive/10 p-2"
+                                    title="Excluir">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-12 text-center text-muted-foreground">
+                            <i data-lucide="warehouse" class="w-12 h-12 mx-auto mb-4 opacity-20"></i>
+                            <p>Nenhum local de armazenamento cadastrado.</p>
+                            <a href="{% url 'storage_location_create' %}" class="text-primary hover:underline mt-2 inline-block">Criar primeiro local</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% include "_pagination.html" %}
+</div>
+{% endblock %}

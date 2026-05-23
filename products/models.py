@@ -35,10 +35,42 @@ class ProductManager(models.Manager):
         return self.filter(is_public=True)
 
     def low_stock(self):
-        return self.filter(stock__lte=models.F("min_stock_level"))
+        return self.filter(
+            pk__in=Stock.objects.annotate(
+                diff=models.F("quantidade_atual") - models.F("estoque_minimo")
+            ).filter(diff__lte=0).values("product")
+        )
+
+    def with_stock_annotations(self):
+        return self.annotate(
+            _stock_value=models.Subquery(
+                Stock.objects.filter(product=models.OuterRef("pk"))
+                .values("product")
+                .annotate(total=models.Sum("quantidade_atual"))
+                .values("total")[:1]
+            ),
+            _min_stock_value=models.Subquery(
+                Stock.objects.filter(product=models.OuterRef("pk"))
+                .values("product")
+                .annotate(total=models.Sum("estoque_minimo"))
+                .values("total")[:1]
+            ),
+        )
 
 
 class Product(models.Model):
+    class StatusChoices(models.TextChoices):
+        ATIVO = "ativo", "Ativo"
+        INATIVO = "inativo", "Inativo"
+        DESCONTINUADO = "descontinuado", "Descontinuado"
+
+    class UnidadeMedidaChoices(models.TextChoices):
+        UN = "UN", "Unidade"
+        KG = "KG", "Quilograma"
+        CX = "CX", "Caixa"
+        L = "L", "Litro"
+        PCT = "PCT", "Pacote"
+
     # 1. Campos do Banco de Dados Primeiro
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="products", null=True, blank=True)
     supplier = models.ForeignKey("partners.Supplier", on_delete=models.SET_NULL, null=True, blank=True, related_name="products")
@@ -51,8 +83,20 @@ class Product(models.Model):
     description = models.TextField(blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     cost_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-    stock = models.IntegerField(default=0)
-    min_stock_level = models.IntegerField(default=0)
+    codigo_barras = models.CharField(max_length=14, blank=True, default="", verbose_name="Código de Barras (EAN/GTIN)")
+    sku = models.CharField(max_length=50, blank=True, default="", verbose_name="SKU (Código Interno)")
+    marca = models.CharField(max_length=100, blank=True, default="", verbose_name="Marca")
+    unidade_medida = models.CharField(
+        max_length=3, choices=UnidadeMedidaChoices.choices, blank=True, default=UnidadeMedidaChoices.UN, verbose_name="Unidade de Medida"
+    )
+    peso_liquido = models.DecimalField(max_digits=8, decimal_places=3, null=True, blank=True, verbose_name="Peso Líquido (kg)")
+    peso_bruto = models.DecimalField(max_digits=8, decimal_places=3, null=True, blank=True, verbose_name="Peso Bruto (kg)")
+    largura = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True, verbose_name="Largura (cm)")
+    altura = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True, verbose_name="Altura (cm)")
+    profundidade = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True, verbose_name="Profundidade (cm)")
+    ncm = models.CharField(max_length=8, blank=True, default="", verbose_name="NCM")
+    cest = models.CharField(max_length=9, blank=True, default="", verbose_name="CEST")
+    status = models.CharField(max_length=14, choices=StatusChoices.choices, blank=True, default=StatusChoices.ATIVO, verbose_name="Status")
     is_public = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -68,6 +112,22 @@ class Product(models.Model):
     # 3. Métodos do modelo por último
     def __str__(self):
         return self.name
+
+    @property
+    def stock(self):
+        try:
+            return self._stock_value
+        except AttributeError:
+            total = self.stocks.aggregate(total=models.Sum("quantidade_atual"))["total"]
+            return total or 0
+
+    @property
+    def min_stock_level(self):
+        try:
+            return self._min_stock_value
+        except AttributeError:
+            total = self.stocks.aggregate(total=models.Sum("estoque_minimo"))["total"]
+            return total or 0
 
     @property
     def profit_margin(self):
@@ -122,6 +182,31 @@ class ProductMovement(models.Model):
         return f"{display_type} - {self.product.name} ({self.quantity}) em {moved}"
 
 
+class FieldConfig(models.Model):
+    MODEL_CHOICES = [
+        ("Product", "Produto"),
+        ("Category", "Categoria"),
+        ("StorageLocation", "Local de Armazenamento"),
+        ("Customer", "Cliente"),
+        ("Supplier", "Fornecedor"),
+        ("ProductMovement", "Movimentação"),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="field_configs")
+    model_name = models.CharField(max_length=50, choices=MODEL_CHOICES, verbose_name="Formulário")
+    field_name = models.CharField(max_length=100, verbose_name="Campo")
+    field_label = models.CharField(max_length=200, blank=True, default="", verbose_name="Rótulo")
+    required = models.BooleanField(default=False, verbose_name="Obrigatório")
+
+    class Meta:
+        verbose_name = "Configuração de Campo"
+        verbose_name_plural = "Configurações de Campos"
+        unique_together = [["user", "model_name", "field_name"]]
+
+    def __str__(self):
+        return f"{self.get_model_name_display()} / {self.field_label or self.field_name}: {'Obrigatório' if self.required else 'Opcional'}"
+
+
 class Profile(models.Model):
     THEME_CHOICES = [
         ("light", "Light"),
@@ -133,6 +218,51 @@ class Profile(models.Model):
 
     def __str__(self):
         return f"{self.user.username}'s profile"
+
+
+class StorageLocation(models.Model):
+    class TypeChoices(models.TextChoices):
+        DEPOSITO = "deposito", "Depósito"
+        LOJA = "loja", "Loja"
+        CORREDOR = "corredor", "Corredor"
+        PRATELEIRA = "prateleira", "Prateleira"
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="storage_locations")
+    name = models.CharField(max_length=100, verbose_name="Nome")
+    type = models.CharField(max_length=20, choices=TypeChoices.choices, default=TypeChoices.DEPOSITO, verbose_name="Tipo")
+    description = models.TextField(blank=True, default="", verbose_name="Descrição")
+    is_active = models.BooleanField(default=True, verbose_name="Ativo")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Local de Armazenamento"
+        verbose_name_plural = "Locais de Armazenamento"
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
+class Stock(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="stocks")
+    local = models.ForeignKey(StorageLocation, on_delete=models.CASCADE, related_name="stocks")
+    quantidade_atual = models.IntegerField(default=0, verbose_name="Quantidade Atual")
+    quantidade_reservada = models.IntegerField(default=0, verbose_name="Quantidade Reservada")
+    estoque_minimo = models.IntegerField(default=0, verbose_name="Estoque Mínimo")
+    estoque_maximo = models.IntegerField(null=True, blank=True, verbose_name="Estoque Máximo")
+    lote = models.CharField(max_length=50, blank=True, default="", verbose_name="Lote")
+    data_validade = models.DateField(null=True, blank=True, verbose_name="Data de Validade")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Estoque"
+        verbose_name_plural = "Estoques"
+        unique_together = [["product", "local"]]
+
+    def __str__(self):
+        return f"{self.product.name} - {self.local.name}"
 
 
 @receiver(post_save, sender=User)
@@ -162,64 +292,68 @@ def track_price_changes(sender, instance, created, **kwargs):
     Cria um registro inicial quando o produto é criado.
     """
     if created:
-        # Primeiro registro de preço ao criar o produto
         PriceHistory.objects.create(product=instance, price=instance.price)
     else:
-        # Verifica se o preço mudou comparando com o último registro
         last_price_entry = instance.price_history.first()
 
-        # Se não há histórico anterior, cria o primeiro registro
         if not last_price_entry:
             PriceHistory.objects.create(product=instance, price=instance.price)
-        # Se o preço mudou, cria um novo registro
         elif last_price_entry.price != instance.price:
             PriceHistory.objects.create(product=instance, price=instance.price)
 
 
-@receiver(post_save, sender=Product)
+@receiver(post_save, sender=Stock)
 def track_stock_changes(sender, instance, created, **kwargs):
     """
     Registra automaticamente mudanças de estoque no histórico de movimentações.
-    Cria um registro inicial quando o produto é criado.
+    Cria um registro inicial quando o estoque é criado.
     """
+    from django.db.models import Case, IntegerField, Sum, When
+
     if created:
-        if instance.stock > 0:
-            ProductMovement.objects.create(product=instance, type="IN", quantity=instance.stock, reason="Estoque inicial")
-        # No movement if initial stock is zero
+        if instance.quantidade_atual > 0:
+            ProductMovement.objects.create(
+                product=instance.product,
+                type="IN",
+                quantity=instance.quantidade_atual,
+                reason="Estoque inicial",
+            )
     else:
-        # Verifica se o estoque mudou comparando com o último estado conhecido
-        # Precisamos saber o estoque anterior. Como o Django não guarda o estado anterior nativamente no save,
-        # poderíamos usar um middleware ou buscar o último registro de movimentação para calcular.
-        # Mas uma forma mais simples é ver o saldo acumulado das movimentações.
-        # No entanto, se o usuário editar o campo 'stock' livremente, queremos capturar a diferença.
-
-        from django.db.models import Sum
-
         movements_sum = (
-            instance.movements.aggregate(
+            instance.product.movements.aggregate(
                 total=Sum(
-                    models.Case(
-                        models.When(type="IN", then=models.F("quantity")),
-                        models.When(type="OUT", then=-models.F("quantity")),
+                    Case(
+                        When(type="IN", then=models.F("quantity")),
+                        When(type="OUT", then=-models.F("quantity")),
                         default=0,
-                        output_field=models.IntegerField(),
+                        output_field=IntegerField(),
                     )
                 )
             )["total"]
             or 0
         )
 
-        diff = instance.stock - movements_sum
+        diff = instance.quantidade_atual - movements_sum
 
         if diff > 0:
-            ProductMovement.objects.create(product=instance, type="IN", quantity=diff, reason="Ajuste de estoque")
+            ProductMovement.objects.create(product=instance.product, type="IN", quantity=diff, reason="Ajuste de estoque")
         elif diff < 0:
             ProductMovement.objects.create(
-                product=instance,
+                product=instance.product,
                 type="OUT",
                 quantity=abs(diff),
                 reason="Ajuste de estoque",
             )
+
+
+@receiver(post_save, sender=User)
+def create_default_storage_location(sender, instance, created, **kwargs):
+    if created:
+        StorageLocation.objects.get_or_create(
+            user=instance,
+            name="Depósito Principal",
+            defaults={"type": StorageLocation.TypeChoices.DEPOSITO},
+        )
 
 
 @receiver(post_save, sender=User)

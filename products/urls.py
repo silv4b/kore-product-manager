@@ -18,6 +18,12 @@ urlpatterns = [
     path("delete/<int:pk>/", views.ProductDeleteView.as_view(), name="product_delete"),
     path("bulk-action/", views.ProductBulkActionView.as_view(), name="product_bulk_action"),
 
+    # Storage Locations
+    path("locais/", views.StorageLocationListView.as_view(), name="storage_location_list"),
+    path("locais/add/", views.StorageLocationCreateView.as_view(), name="storage_location_create"),
+    path("locais/edit/<int:pk>/", views.StorageLocationUpdateView.as_view(), name="storage_location_update"),
+    path("locais/delete/<int:pk>/", views.StorageLocationDeleteView.as_view(), name="storage_location_delete"),
+
     # Categories
     path("categories/", views.CategoryListView.as_view(), name="category_list"),
     path("categories/add/", views.CategoryCreateView.as_view(), name="category_create"),
@@ -33,6 +39,7 @@ urlpatterns = [
 
     # Profile & System
     path("profile/", views.ProfileView.as_view(), name="profile"),
+    path("field-config/", views.FieldConfigView.as_view(), name="field_config"),
     path("profile/delete/", views.DeleteAccountView.as_view(), name="delete_account"),
     path("catalog/<str:username>/", views.UserPublicCatalogView.as_view(), name="user_public_catalog"),
     path("toggle-theme/", views.ToggleThemeView.as_view(), name="toggle_theme"),
