@@ -101,7 +101,7 @@
                             </div>
                             {% for cat in categories %}
                             <div class="category-option p-2.5 flex items-center justify-between hover:bg-muted rounded-md cursor-pointer transition-colors text-sm {% if category_id == cat.id|stringformat:'i' %}bg-primary/5 text-primary font-bold{% endif %}"
-                                data-id="{{ cat.id }}" data-name="{{ cat.name }}">
+                                data-id="{{ cat.id|unlocalize }}" data-name="{{ cat.name }}">
                                 <div class="flex items-center gap-2">
                                     <div class="w-2 h-2 rounded-full" style="background-color: {{ cat.color }}">
                                     </div>
@@ -258,7 +258,7 @@
                         <div class="max-h-48 overflow-y-auto custom-scrollbar" id="bulk-category-list">
                             {% for cat in categories %}
                             <div class="bulk-category-option p-2.5 flex items-center gap-2 hover:bg-muted rounded-md cursor-pointer transition-colors text-sm"
-                                data-id="{{ cat.id }}" data-name="{{ cat.name }}">
+                                data-id="{{ cat.id|unlocalize }}" data-name="{{ cat.name }}">
                                 <div class="w-2.5 h-2.5 rounded-full" style="background-color: {{ cat.color }}"></div>
                                 <span>{{ cat.name }}</span>
                             </div>
@@ -302,8 +302,8 @@
         {% if product.user == user and not is_public_view %}
         <!-- Checkbox for Bulk Selection (Hidden in Grid view as requested) -->
         <div class="absolute top-3 left-3 z-20 transition-opacity {% if view_mode == 'grid' %}hidden{% endif %}"
-            id="checkbox-container-{{ product.pk }}">
-            <input type="checkbox" name="product_ids" value="{{ product.pk }}"
+            id="checkbox-container-{{ product.pk|unlocalize }}">
+            <input type="checkbox" name="product_ids" value="{{ product.pk|unlocalize }}"
                 class="checkbox-product w-5 h-5 rounded border-border bg-background checked:bg-primary cursor-pointer transition-all hover:scale-110"
                 onclick="event.stopPropagation()">
         </div>
@@ -512,7 +512,7 @@
                         {% if not is_public_view %}
                         <td class="px-6 py-4">
                             {% if product.user == user %}
-                            <input type="checkbox" name="product_ids" value="{{ product.pk }}"
+                            <input type="checkbox" name="product_ids" value="{{ product.pk|unlocalize }}"
                                 class="checkbox-product w-4 h-4 rounded border-border bg-background checked:bg-primary cursor-pointer">
                             {% endif %}
                         </td>

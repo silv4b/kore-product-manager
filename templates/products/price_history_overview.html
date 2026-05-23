@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load l10n static %}
 {% block content %}
 
 {% comment %} <div class="container mx-auto p-6 space-y-8"> {% endcomment %}
@@ -57,7 +57,7 @@
                                 </div>
                                 {% for cat in categorias %}
                                 <div class="category-option p-2.5 flex items-center justify-between hover:bg-muted rounded-md cursor-pointer transition-colors text-sm {% if selected_category == cat.id|stringformat:'i' %}bg-primary/5 text-primary font-bold{% endif %}"
-                                    data-id="{{ cat.id }}" data-name="{{ cat.name }}">
+                                    data-id="{{ cat.id|unlocalize }}" data-name="{{ cat.name }}">
                                     <div class="flex items-center gap-2">
                                         <div class="w-2 h-2 rounded-full" style="background-color: {{ cat.color }}">
                                         </div>

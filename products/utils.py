@@ -1,5 +1,7 @@
 from django.core.paginator import Paginator
-from django.db.models import Min, Q
+from django.db.models import Min, Q, Sum
+
+from products.models import Stock
 
 
 def apply_product_filters(
@@ -21,14 +23,24 @@ def apply_product_filters(
         queryset = queryset.filter(is_public=True)
     elif status == "private":
         queryset = queryset.filter(is_public=False)
+    elif status == "ativo":
+        queryset = queryset.filter(status="ativo")
+    elif status == "inativo":
+        queryset = queryset.filter(status="inativo")
+    elif status == "descontinuado":
+        queryset = queryset.filter(status="descontinuado")
     if min_price:
         queryset = queryset.filter(price__gte=min_price)
     if max_price:
         queryset = queryset.filter(price__lte=max_price)
     if min_stock:
-        queryset = queryset.filter(stock__gte=min_stock)
+        queryset = queryset.filter(
+            pk__in=Stock.objects.values("product").annotate(total=Sum("quantidade_atual")).filter(total__gte=min_stock).values("product")
+        )
     if max_stock:
-        queryset = queryset.filter(stock__lte=max_stock)
+        queryset = queryset.filter(
+            pk__in=Stock.objects.values("product").annotate(total=Sum("quantidade_atual")).filter(total__lte=max_stock).values("product")
+        )
     return queryset
 
 

@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% load l10n %}
+
+{% block content %}
+<div class="flex flex-col gap-8 max-w-4xl">
+    <header>
+        <h2 class="text-3xl font-bold tracking-tight">Configuração de Campos</h2>
+        <p class="text-muted-foreground">Defina quais campos são obrigatórios ou opcionais em cada formulário do sistema.</p>
+    </header>
+
+    <form method="post" class="flex flex-col gap-6">
+        {% csrf_token %}
+
+        {% for group in grouped %}
+        <div class="card bg-card transition-colors">
+            <header>
+                <h3 class="text-lg font-bold flex items-center gap-2">
+                    <i data-lucide="form-input" class="w-5 h-5 text-primary"></i>
+                    {{ group.label }}
+                </h3>
+            </header>
+
+            <section class="py-2">
+                <div class="flex flex-col divide-y divide-border">
+                    {% for field in group.fields %}
+                    <div class="flex items-center justify-between py-3 px-1">
+                        <div>
+                            <p class="text-sm font-medium text-foreground">{{ field.label }}</p>
+                            <p class="text-xs text-muted-foreground font-mono">{{ field.field_name }}</p>
+                        </div>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <span class="text-xs {% if field.required %}text-foreground font-medium{% else %}text-muted-foreground{% endif %}">
+                                {{ field.required|yesno:"Obrigatório,Opcional" }}
+                            </span>
+                            <div class="relative inline-flex items-center">
+                                <input type="checkbox"
+                                    name="{{ group.model_name }}.{{ field.field_name }}"
+                                    {% if field.required %}checked{% endif %}
+                                    class="toggle"
+                                    onchange="this.closest('label').querySelector('span').textContent = this.checked ? 'Obrigatório' : 'Opcional'; this.closest('label').querySelector('span').className = 'text-xs ' + (this.checked ? 'text-foreground font-medium' : 'text-muted-foreground');">
+                            </div>
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+        </div>
+        {% endfor %}
+
+        <div class="flex justify-end gap-3">
+            <button type="submit" class="btn btn-primary px-8 font-bold">
+                <i data-lucide="save" class="w-4 h-4"></i>
+                Salvar Configurações
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

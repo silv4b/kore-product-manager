@@ -64,24 +64,6 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="field">
-                        <label for="id_stock" class="text-foreground font-medium mb-1.5">Quantidade em Estoque</label>
-                        <input type="number" name="stock" id="id_stock" placeholder="0"
-                            value="{{ form.stock.value|unlocalize|default:'' }}" class="input w-full" required>
-                        {% if form.stock.errors %}<p class="text-destructive text-xs mt-1">{{ form.stock.errors.0 }}</p>
-                        {% endif %}
-                    </div>
-
-                    <div class="field">
-                        <label for="id_min_stock_level" class="text-foreground font-medium mb-1.5">Estoque Mínimo (Alerta)</label>
-                        <input type="number" name="min_stock_level" id="id_min_stock_level" placeholder="0"
-                            value="{{ form.min_stock_level.value|unlocalize|default:'0' }}" class="input w-full">
-                        {% if form.min_stock_level.errors %}<p class="text-destructive text-xs mt-1">{{ form.min_stock_level.errors.0 }}</p>
-                        {% endif %}
-                    </div>
-                </div>
-
                 <div class="field">
                     <label class="text-foreground font-medium mb-1.5 block">
                         Categorias
@@ -110,12 +92,111 @@
                         {{ form.categories.errors.0 }}</p>{% endif %}
                 </div>
 
+                <!-- Seção: Informações Fiscais e Identificação -->
+                <div class="border-t border-border pt-4">
+                    <h3 class="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Identificação e Fiscal</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="field">
+                            <label for="id_codigo_barras" class="text-foreground font-medium mb-1.5">Código de Barras (EAN/GTIN)</label>
+                            <input type="text" name="codigo_barras" id="id_codigo_barras" placeholder="EAN/GTIN"
+                                value="{{ form.codigo_barras.value|default:'' }}" class="input w-full">
+                            {% if form.codigo_barras.errors %}<p class="text-destructive text-xs mt-1">{{ form.codigo_barras.errors.0 }}</p>{% endif %}
+                        </div>
+                        <div class="field">
+                            <label for="id_sku" class="text-foreground font-medium mb-1.5">SKU (Código Interno)</label>
+                            <input type="text" name="sku" id="id_sku" placeholder="Código interno"
+                                value="{{ form.sku.value|default:'' }}" class="input w-full">
+                            {% if form.sku.errors %}<p class="text-destructive text-xs mt-1">{{ form.sku.errors.0 }}</p>{% endif %}
+                        </div>
+                        <div class="field">
+                            <label for="id_ncm" class="text-foreground font-medium mb-1.5">NCM</label>
+                            <input type="text" name="ncm" id="id_ncm" placeholder="NCM (8 dígitos)"
+                                value="{{ form.ncm.value|default:'' }}" class="input w-full">
+                            {% if form.ncm.errors %}<p class="text-destructive text-xs mt-1">{{ form.ncm.errors.0 }}</p>{% endif %}
+                        </div>
+                        <div class="field">
+                            <label for="id_cest" class="text-foreground font-medium mb-1.5">CEST</label>
+                            <input type="text" name="cest" id="id_cest" placeholder="CEST"
+                                value="{{ form.cest.value|default:'' }}" class="input w-full">
+                            {% if form.cest.errors %}<p class="text-destructive text-xs mt-1">{{ form.cest.errors.0 }}</p>{% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seção: Marca, Unidade e Dimensões -->
+                <div class="border-t border-border pt-4">
+                    <h3 class="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Características</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="field">
+                            <label for="id_marca" class="text-foreground font-medium mb-1.5">Marca</label>
+                            <input type="text" name="marca" id="id_marca" placeholder="Marca do produto"
+                                value="{{ form.marca.value|default:'' }}" class="input w-full">
+                            {% if form.marca.errors %}<p class="text-destructive text-xs mt-1">{{ form.marca.errors.0 }}</p>{% endif %}
+                        </div>
+                        <div class="field">
+                            <label for="id_unidade_medida" class="text-foreground font-medium mb-1.5">Unidade de Medida</label>
+                            <select name="unidade_medida" id="id_unidade_medida" class="select w-full">
+                                {% for choice in form.unidade_medida.field.choices %}
+                                <option value="{{ choice.0 }}" {% if form.unidade_medida.value == choice.0 %}selected{% endif %}>{{ choice.1 }}</option>
+                                {% endfor %}
+                            </select>
+                            {% if form.unidade_medida.errors %}<p class="text-destructive text-xs mt-1">{{ form.unidade_medida.errors.0 }}</p>{% endif %}
+                        </div>
+                        <div class="field">
+                            <label for="id_peso_liquido" class="text-foreground font-medium mb-1.5">Peso Líquido (kg)</label>
+                            <input type="number" name="peso_liquido" id="id_peso_liquido" placeholder="kg" step="0.001"
+                                value="{{ form.peso_liquido.value|default:'' }}" class="input w-full">
+                            {% if form.peso_liquido.errors %}<p class="text-destructive text-xs mt-1">{{ form.peso_liquido.errors.0 }}</p>{% endif %}
+                        </div>
+                        <div class="field">
+                            <label for="id_peso_bruto" class="text-foreground font-medium mb-1.5">Peso Bruto (kg)</label>
+                            <input type="number" name="peso_bruto" id="id_peso_bruto" placeholder="kg" step="0.001"
+                                value="{{ form.peso_bruto.value|default:'' }}" class="input w-full">
+                            {% if form.peso_bruto.errors %}<p class="text-destructive text-xs mt-1">{{ form.peso_bruto.errors.0 }}</p>{% endif %}
+                        </div>
+                        <div class="field">
+                            <label for="id_largura" class="text-foreground font-medium mb-1.5">Largura (cm)</label>
+                            <input type="number" name="largura" id="id_largura" placeholder="cm" step="0.01"
+                                value="{{ form.largura.value|default:'' }}" class="input w-full">
+                            {% if form.largura.errors %}<p class="text-destructive text-xs mt-1">{{ form.largura.errors.0 }}</p>{% endif %}
+                        </div>
+                        <div class="field">
+                            <label for="id_altura" class="text-foreground font-medium mb-1.5">Altura (cm)</label>
+                            <input type="number" name="altura" id="id_altura" placeholder="cm" step="0.01"
+                                value="{{ form.altura.value|default:'' }}" class="input w-full">
+                            {% if form.altura.errors %}<p class="text-destructive text-xs mt-1">{{ form.altura.errors.0 }}</p>{% endif %}
+                        </div>
+                        <div class="field">
+                            <label for="id_profundidade" class="text-foreground font-medium mb-1.5">Profundidade (cm)</label>
+                            <input type="number" name="profundidade" id="id_profundidade" placeholder="cm" step="0.01"
+                                value="{{ form.profundidade.value|default:'' }}" class="input w-full">
+                            {% if form.profundidade.errors %}<p class="text-destructive text-xs mt-1">{{ form.profundidade.errors.0 }}</p>{% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seção: Status -->
+                <div class="border-t border-border pt-4">
+                    <h3 class="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Status do Produto</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="field">
+                            <label for="id_status" class="text-foreground font-medium mb-1.5">Situação</label>
+                            <select name="status" id="id_status" class="select w-full">
+                                {% for choice in form.status.field.choices %}
+                                <option value="{{ choice.0 }}" {% if form.status.value == choice.0 %}selected{% endif %}>{{ choice.1 }}</option>
+                                {% endfor %}
+                            </select>
+                            {% if form.status.errors %}<p class="text-destructive text-xs mt-1">{{ form.status.errors.0 }}</p>{% endif %}
+                        </div>
+                    </div>
+                </div>
+
                 <div class="field">
                     <label for="id_supplier" class="text-foreground font-medium mb-1.5">Fornecedor</label>
                     <select name="supplier" id="id_supplier" class="select w-full">
                         <option value="">---------</option>
                         {% for choice in form.supplier.field.queryset %}
-                            <option value="{{ choice.pk }}" {% if form.supplier.value|stringformat:"s" == choice.pk|stringformat:"s" %}selected{% endif %}>{{ choice.name }}</option>
+                            <option value="{{ choice.pk|unlocalize }}" {% if form.supplier.value|stringformat:"s" == choice.pk|stringformat:"s" %}selected{% endif %}>{{ choice.name }}</option>
                         {% endfor %}
                     </select>
                     {% if form.supplier.errors %}<p class="text-destructive text-xs mt-1">{{ form.supplier.errors.0 }}</p>

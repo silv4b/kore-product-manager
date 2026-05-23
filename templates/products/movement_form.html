@@ -20,12 +20,12 @@
         <div class="flex flex-col sm:flex-row justify-between gap-4 p-6">
             <div>
                 <p class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Estoque Atual</p>
-                <p class="text-2xl font-bold text-foreground">{{ product.stock }} unidades</p>
+                <p class="text-2xl font-bold text-foreground">{{ stock.quantidade_atual|default:product.stock }} unidades</p>
             </div>
             <div>
                 <p class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Impacto Previsto</p>
                 <p id="impact-display" class="text-2xl font-bold {% if type == 'IN' %}text-green-600{% else %}text-red-600{% endif %}">
-                    {{ product.stock }} unidades
+                    {{ stock.quantidade_atual|default:product.stock }} unidades
                 </p>
             </div>
         </div>
@@ -72,7 +72,7 @@
     document.addEventListener('DOMContentLoaded', function() {
         const quantityInput = document.getElementById('{{ form.quantity.id_for_label }}');
         const impactDisplay = document.getElementById('impact-display');
-        const currentStock = {{ product.stock }};
+        const currentStock = {{ stock.quantidade_atual|default:product.stock }};
         const type = '{{ type }}';
 
         function updateImpact() {

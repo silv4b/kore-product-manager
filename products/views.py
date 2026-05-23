@@ -6,7 +6,8 @@ from django.contrib.auth import logout as auth_logout
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import User
 from django.db import models
-from django.db.models import Count, DecimalField, ExpressionWrapper, F, OuterRef, Subquery, Sum
+from django.db.models import Count, DecimalField, ExpressionWrapper, F, IntegerField, OuterRef, Subquery, Sum, Value
+from django.db.models.functions import Coalesce
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
@@ -14,8 +15,8 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import CreateView, DeleteView, DetailView, FormView, ListView, TemplateView, UpdateView
 
-from .forms import CategoryForm, MovementForm, ProductForm
-from .models import Category, PriceHistory, Product, ProductMovement
+from .forms import FIELD_CONFIG_MAP, CategoryForm, MovementForm, ProductForm, StorageLocationForm
+from .models import Category, FieldConfig, PriceHistory, Product, ProductMovement, Stock, StorageLocation
 from .utils import PaginationMixin, apply_product_filters, paginate_queryset, sort_queryset
 
 
@@ -69,10 +70,33 @@ class ProductListView(LoginRequiredMixin, PaginationMixin, ListView):
             max_stock=self.max_stock,
         )
 
+        products = products.annotate(
+            _stock_value=Coalesce(
+                Subquery(
+                    Stock.objects.filter(product=OuterRef("pk"))
+                    .values("product")
+                    .annotate(total=Sum("quantidade_atual"))
+                    .values("total")[:1]
+                ),
+                Value(0),
+                output_field=IntegerField(),
+            ),
+            _min_stock_value=Coalesce(
+                Subquery(
+                    Stock.objects.filter(product=OuterRef("pk"))
+                    .values("product")
+                    .annotate(total=Sum("estoque_minimo"))
+                    .values("total")[:1]
+                ),
+                Value(0),
+                output_field=IntegerField(),
+            ),
+        )
+
         valid_fields = {
             "name": "name",
             "price": "price",
-            "stock": "stock",
+            "stock": "_stock_value",
             "status": "is_public",
         }
         products = sort_queryset(
@@ -85,13 +109,11 @@ class ProductListView(LoginRequiredMixin, PaginationMixin, ListView):
         full_qs = self.object_list
         context = super().get_context_data(**kwargs)
 
+        stock_value_expr = ExpressionWrapper(F("price") * F("_stock_value"), output_field=DecimalField())
         context["stats"] = {
             "total_count": full_qs.count(),
-            "total_stock": full_qs.aggregate(Sum("stock"))["stock__sum"] or 0,
-            "total_value": full_qs.annotate(val=ExpressionWrapper(F("price") * F("stock"), output_field=DecimalField())).aggregate(total=Sum("val"))[
-                "total"
-            ]
-            or 0,
+            "total_stock": full_qs.aggregate(total_stock=Sum("_stock_value"))["total_stock"] or 0,
+            "total_value": full_qs.annotate(val=stock_value_expr).aggregate(total=Sum("val"))["total"] or 0,
         }
         context["categories"] = Category.objects.filter(user=self.request.user)
         context["title"] = "Meus Produtos"
@@ -232,6 +254,11 @@ class ProductDetailView(DetailView):
                 messages.error(request, "Você não tem permissão para ver este produto.")
                 return redirect("account_login")
         return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["stock"] = Stock.objects.filter(product=self.object).first()
+        return context
 
 
 class PriceHistoryView(DetailView):
@@ -394,6 +421,8 @@ class ProductMovementView(DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        stock = Stock.objects.filter(product=self.object).first()
+        context["stock"] = stock
         movements = cast("Any", self.object).movements.all()
 
         data_inicio = self.request.GET.get("data_inicio")
@@ -521,6 +550,28 @@ class MovementSelectProductView(LoginRequiredMixin, PaginationMixin, ListView):
         self.status = self.request.GET.get("status", "")
 
         products = apply_product_filters(products, q=self.q, category_id=self.category_id, status=self.status)
+        products = products.annotate(
+            _stock_value=Coalesce(
+                Subquery(
+                    Stock.objects.filter(product=OuterRef("pk"))
+                    .values("product")
+                    .annotate(total=Sum("quantidade_atual"))
+                    .values("total")[:1]
+                ),
+                Value(0),
+                output_field=IntegerField(),
+            ),
+            _min_stock_value=Coalesce(
+                Subquery(
+                    Stock.objects.filter(product=OuterRef("pk"))
+                    .values("product")
+                    .annotate(total=Sum("estoque_minimo"))
+                    .values("total")[:1]
+                ),
+                Value(0),
+                output_field=IntegerField(),
+            ),
+        )
         return products.distinct().order_by("name")
 
     def get_context_data(self, **kwargs):
@@ -547,6 +598,11 @@ class PerformMovementView(LoginRequiredMixin, CreateView):
     template_name = "products/movement_form.html"
     success_url = reverse_lazy("product_movement_overview")
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
+
     def dispatch(self, request, *args, **kwargs):
         self.product_obj = get_object_or_404(Product, pk=kwargs.get("pk"), user=request.user)
         self.type = kwargs.get("type")
@@ -559,19 +615,27 @@ class PerformMovementView(LoginRequiredMixin, CreateView):
         movement.product = self.product_obj
         movement.type = self.type
 
+        stock = Stock.objects.filter(product=self.product_obj).first()
+        if not stock:
+            default_local = StorageLocation.objects.filter(user=self.product_obj.user, is_active=True).first()
+            if not default_local:
+                messages.error(self.request, "Nenhum local de armazenamento disponível.")
+                return self.form_invalid(form)
+            stock = Stock.objects.create(product=self.product_obj, local=default_local)
+
         if self.type == "IN":
-            self.product_obj.stock += movement.quantity
+            stock.quantidade_atual += movement.quantity
         else:
-            if self.product_obj.stock < movement.quantity:
+            if stock.quantidade_atual < movement.quantity:
                 messages.error(
                     self.request,
-                    f"Estoque insuficiente para realizar esta saída. Estoque atual: {self.product_obj.stock}",
+                    f"Estoque insuficiente para realizar esta saída. Estoque atual: {stock.quantidade_atual}",
                 )
                 return self.form_invalid(form)
-            self.product_obj.stock -= movement.quantity
+            stock.quantidade_atual -= movement.quantity
 
         movement.save()
-        self.product_obj.save()
+        stock.save()
 
         messages.success(
             self.request,
@@ -581,14 +645,100 @@ class PerformMovementView(LoginRequiredMixin, CreateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        stock = Stock.objects.filter(product=self.product_obj).first()
         context.update(
             {
                 "product": self.product_obj,
+                "stock": stock,
                 "type": self.type,
                 "type_display": "Entrada" if self.type == "IN" else "Saída",
             }
         )
         return context
+
+
+# --- StorageLocation Views ---
+class StorageLocationListView(LoginRequiredMixin, PaginationMixin, ListView):
+    model = StorageLocation
+    template_name = "products/storage_location_list.html"
+    context_object_name = "locations"
+    paginate_by = 20
+
+    def get_queryset(self):
+        sort_field = self.request.GET.get("sort", "name")
+        sort_direction = self.request.GET.get("dir", "asc")
+        valid_sort_fields = {"name": "name", "type": "type", "is_active": "is_active"}
+        target_field = valid_sort_fields.get(sort_field, "name")
+        prefix = "" if sort_direction == "asc" else "-"
+        return StorageLocation.objects.filter(user=self.request.user).order_by(f"{prefix}{target_field}")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["title"] = "Locais de Armazenamento"
+        return context
+
+
+class StorageLocationCreateView(LoginRequiredMixin, CreateView):
+    model = StorageLocation
+    form_class = StorageLocationForm
+    template_name = "products/storage_location_form.html"
+    success_url = reverse_lazy("storage_location_list")
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
+
+    def form_valid(self, form):
+        location = form.save(commit=False)
+        location.user = self.request.user
+        location.save()
+        messages.success(self.request, f'Local "{location.name}" criado com sucesso!')
+        return cast("Any", super()).form_valid(form)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["title"] = "Novo Local"
+        return context
+
+
+class StorageLocationUpdateView(LoginRequiredMixin, UpdateView):
+    model = StorageLocation
+    form_class = StorageLocationForm
+    template_name = "products/storage_location_form.html"
+    success_url = reverse_lazy("storage_location_list")
+
+    def get_queryset(self):
+        return StorageLocation.objects.filter(user=self.request.user)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
+
+    def form_valid(self, form):
+        response = cast("Any", super()).form_valid(form)
+        messages.success(self.request, "Local atualizado com sucesso!")
+        return response
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["title"] = "Editar Local"
+        return context
+
+
+class StorageLocationDeleteView(LoginRequiredMixin, DeleteView):
+    model = StorageLocation
+    template_name = "products/storage_location_confirm_delete.html"
+    success_url = reverse_lazy("storage_location_list")
+
+    def get_queryset(self):
+        return StorageLocation.objects.filter(user=self.request.user)
+
+    def form_valid(self, form):
+        response = cast("Any", super()).form_valid(form)
+        messages.success(self.request, "Local removido com sucesso.")
+        return response
 
 
 # --- Category Views ---
@@ -761,6 +911,68 @@ class DeleteAccountView(LoginRequiredMixin, View):
             return redirect("profile")
 
 
+class FieldConfigView(LoginRequiredMixin, TemplateView):
+    template_name = "products/field_config.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        configs = {
+            c.model_name: {c.field_name: c for c in FieldConfig.objects.filter(user=self.request.user)}
+            for c in FieldConfig.objects.filter(user=self.request.user)
+        }
+        grouped = []
+        for model_name, fields in FIELD_CONFIG_MAP.items():
+            model_configs = configs.get(model_name, {})
+            entries = []
+            for field_name, label in fields:
+                config = model_configs.get(field_name)
+                entries.append({
+                    "field_name": field_name,
+                    "label": label,
+                    "required": config.required if config else False,
+                    "has_config": config is not None,
+                })
+            if entries:
+                grouped.append({
+                    "model_name": model_name,
+                    "label": dict(FieldConfig.MODEL_CHOICES).get(model_name, model_name),
+                    "fields": entries,
+                })
+        context.update({
+            "grouped": grouped,
+            "title": "Configuração de Campos",
+        })
+        return context
+
+    def post(self, request, *args, **kwargs):
+        configs = {
+            (c.model_name, c.field_name): c
+            for c in FieldConfig.objects.filter(user=request.user)
+        }
+        data = request.POST
+        for model_name, fields in FIELD_CONFIG_MAP.items():
+            for field_name, label in fields:
+                key = f"{model_name}.{field_name}"
+                required = data.get(key) == "on"
+                config = configs.get((model_name, field_name))
+                if required and not config:
+                    FieldConfig.objects.create(
+                        user=request.user,
+                        model_name=model_name,
+                        field_name=field_name,
+                        field_label=label,
+                        required=True,
+                    )
+                elif required and config and not config.required:
+                    config.required = True
+                    config.save()
+                elif not required and config and config.required:
+                    config.required = False
+                    config.save()
+        messages.success(request, "Configurações salvas com sucesso!")
+        return redirect("field_config")
+
+
 class UserPublicCatalogView(PaginationMixin, ListView):
     model = Product
     template_name = "products/product_list.html"
@@ -791,19 +1003,41 @@ class UserPublicCatalogView(PaginationMixin, ListView):
             max_stock=self.max_stock,
         )
 
+        products = products.annotate(
+            _stock_value=Coalesce(
+                Subquery(
+                    Stock.objects.filter(product=OuterRef("pk"))
+                    .values("product")
+                    .annotate(total=Sum("quantidade_atual"))
+                    .values("total")[:1]
+                ),
+                Value(0),
+                output_field=IntegerField(),
+            ),
+            _min_stock_value=Coalesce(
+                Subquery(
+                    Stock.objects.filter(product=OuterRef("pk"))
+                    .values("product")
+                    .annotate(total=Sum("estoque_minimo"))
+                    .values("total")[:1]
+                ),
+                Value(0),
+                output_field=IntegerField(),
+            ),
+        )
+
         return products.distinct().order_by("-created_at")
+
 
     def get_context_data(self, **kwargs):
         full_qs = self.object_list
         context = super().get_context_data(**kwargs)
 
+        stock_value_expr = ExpressionWrapper(F("price") * F("_stock_value"), output_field=DecimalField())
         stats = {
             "total_count": full_qs.count(),
-            "total_stock": full_qs.aggregate(Sum("stock"))["stock__sum"] or 0,
-            "total_value": full_qs.annotate(val=ExpressionWrapper(F("price") * F("stock"), output_field=DecimalField())).aggregate(total=Sum("val"))[
-                "total"
-            ]
-            or 0,
+            "total_stock": full_qs.aggregate(total_stock=Sum("_stock_value"))["total_stock"] or 0,
+            "total_value": full_qs.annotate(val=stock_value_expr).aggregate(total=Sum("val"))["total"] or 0,
         }
 
         if self.request.user.is_authenticated:
@@ -859,7 +1093,30 @@ class PublicProductListView(PaginationMixin, ListView):
             max_stock=self.max_stock,
         )
 
-        valid_fields = {"name": "name", "price": "price", "stock": "stock", "user": "user__username"}
+        products = products.annotate(
+            _stock_value=Coalesce(
+                Subquery(
+                    Stock.objects.filter(product=OuterRef("pk"))
+                    .values("product")
+                    .annotate(total=Sum("quantidade_atual"))
+                    .values("total")[:1]
+                ),
+                Value(0),
+                output_field=IntegerField(),
+            ),
+            _min_stock_value=Coalesce(
+                Subquery(
+                    Stock.objects.filter(product=OuterRef("pk"))
+                    .values("product")
+                    .annotate(total=Sum("estoque_minimo"))
+                    .values("total")[:1]
+                ),
+                Value(0),
+                output_field=IntegerField(),
+            ),
+        )
+
+        valid_fields = {"name": "name", "price": "price", "stock": "_stock_value", "user": "user__username"}
         products = sort_queryset(products, sort_field, sort_direction, valid_fields, default_sort="name", category_sort_key="categories__name")
 
         return products.distinct()
@@ -868,13 +1125,11 @@ class PublicProductListView(PaginationMixin, ListView):
         full_qs = self.object_list
         context = super().get_context_data(**kwargs)
 
+        stock_value_expr = ExpressionWrapper(F("price") * F("_stock_value"), output_field=DecimalField())
         stats = {
             "total_count": full_qs.count(),
-            "total_stock": full_qs.aggregate(Sum("stock"))["stock__sum"] or 0,
-            "total_value": full_qs.annotate(val=ExpressionWrapper(F("price") * F("stock"), output_field=DecimalField())).aggregate(total=Sum("val"))[
-                "total"
-            ]
-            or 0,
+            "total_stock": full_qs.aggregate(total_stock=Sum("_stock_value"))["total_stock"] or 0,
+            "total_value": full_qs.annotate(val=stock_value_expr).aggregate(total=Sum("val"))["total"] or 0,
         }
 
         if self.request.user.is_authenticated:
@@ -968,14 +1223,25 @@ class ReportDashboardView(LoginRequiredMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         user_products = Product.objects.filter(user=self.request.user)
 
-        # Valor total do estoque a preço de custo.
+        stock_subquery = Coalesce(
+            Subquery(
+                Stock.objects.filter(product=OuterRef("pk"))
+                .values("product")
+                .annotate(total=Sum("quantidade_atual"))
+                .values("total")[:1]
+            ),
+            Value(0),
+            output_field=IntegerField(),
+        )
+
+        user_products = user_products.annotate(_stock_value=stock_subquery)
+
         total_cost_value = user_products.annotate(
-            val=ExpressionWrapper(F("cost_price") * F("stock"), output_field=DecimalField())
+            val=ExpressionWrapper(F("cost_price") * F("_stock_value"), output_field=DecimalField())
         ).aggregate(total=Sum("val"))["total"] or 0
 
-        # Valor total do estoque a preço de venda.
         total_sales_value = user_products.annotate(
-            val=ExpressionWrapper(F("price") * F("stock"), output_field=DecimalField())
+            val=ExpressionWrapper(F("price") * F("_stock_value"), output_field=DecimalField())
         ).aggregate(total=Sum("val"))["total"] or 0
 
         # Lucro potencial total
