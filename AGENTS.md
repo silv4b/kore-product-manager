@@ -127,13 +127,8 @@ uv run poe npm_build
 - Hardcode `SECRET_KEY` — use `os.getenv("SECRET_KEY", fallback)`
 - Use `dotenv` package (unmaintained) — use `python-dotenv` instead (import as `from dotenv import load_dotenv`)
 
-<!--
-AGENTS.md is a convention where you document instructions for AI coding assistants that work on the project. It typically includes:
-- Project overview
-- Tech stack
-- Project structure
-- Coding conventions
-- Common commands (dev server, tests, lint, build, etc.)
-- Architecture decisions
-- Environment setup
--->
+## Commit protocol
+
+Before staging any changes, read `docs/batched-commits.md` and follow the
+4-step protocol: analyze → group → present → execute only on user approval.
+Never push — the user does that manually.
