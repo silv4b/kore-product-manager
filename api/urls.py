@@ -13,10 +13,12 @@ from rest_framework_simplejwt.views import (
 from . import views
 
 router = DefaultRouter()
+router.register(r"storage-locations", views.StorageLocationViewSet, basename="storage_location")
 router.register(r"categories", views.CategoryViewSet, basename="category")
 router.register(r"suppliers", views.SupplierViewSet, basename="supplier")
 router.register(r"products", views.ProductViewSet, basename="product")
 router.register(r"movements", views.ProductMovementViewSet, basename="movement")
+router.register(r"stocks", views.StockViewSet, basename="stock")
 
 urlpatterns = [
     path("", include(router.urls)),

@@ -2,7 +2,7 @@ from django.contrib.auth.models import User
 from rest_framework import serializers
 
 from partners.models import Supplier
-from products.models import Category, PriceHistory, Product, ProductMovement
+from products.models import Category, PriceHistory, Product, ProductMovement, Stock, StorageLocation
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -15,11 +15,21 @@ class SupplierSerializer(serializers.ModelSerializer):
     class Meta:
         model = Supplier
         fields = [
-            "id", "name", "email", "phone", "address",
+            "id", "name", "email", "phone",
+            "street", "number", "complement", "neighborhood", "city", "state", "zip_code",
             "cnpj", "company_name", "contact_person", "website",
             "observations", "created_at",
+            "inscricao_estadual", "inscricao_municipal", "regime_tributario",
+            "prazo_entrega_medio", "condicoes_pagamento_padrao", "status",
         ]
         read_only_fields = ["user", "created_at"]
+
+
+class StorageLocationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StorageLocation
+        fields = ["id", "name", "type", "description", "is_active", "created_at", "updated_at"]
+        read_only_fields = ["user", "created_at", "updated_at"]
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -57,6 +67,17 @@ class ProductMovementSerializer(serializers.ModelSerializer):
         return value
 
 
+class StockSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Stock
+        fields = [
+            "id", "product", "local", "quantidade_atual", "quantidade_reservada",
+            "estoque_minimo", "estoque_maximo", "lote", "data_validade",
+            "created_at", "updated_at",
+        ]
+        read_only_fields = ["created_at", "updated_at"]
+
+
 class ProductSerializer(serializers.ModelSerializer):
     categories = CategorySerializer(many=True, read_only=True)
     category_ids = serializers.PrimaryKeyRelatedField(
@@ -92,10 +113,20 @@ class ProductSerializer(serializers.ModelSerializer):
             "description",
             "price",
             "cost_price",
-            "min_stock_level",
             "profit_margin",
-            "stock",
             "is_public",
+            "codigo_barras",
+            "sku",
+            "marca",
+            "unidade_medida",
+            "peso_liquido",
+            "peso_bruto",
+            "largura",
+            "altura",
+            "profundidade",
+            "ncm",
+            "cest",
+            "status",
             "created_at",
             "updated_at",
             "categories",

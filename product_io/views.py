@@ -4,13 +4,15 @@ import io
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
+from django.db.models import IntegerField, OuterRef, Subquery, Sum, Value
+from django.db.models.functions import Coalesce
 from django.http import HttpResponse
 from django.shortcuts import render
 from django.utils.text import slugify
 from django.views import View
 
 from partners.models import Supplier
-from products.models import Category, Product
+from products.models import Category, Product, Stock
 
 from .models import ExportLog, ImportLog
 
@@ -41,15 +43,37 @@ class ProductExportView(LoginRequiredMixin, View):
 
         rows = 0
         try:
-            for product in products:
+            products_with_stock = products.annotate(
+                _export_stock=Coalesce(
+                    Subquery(
+                        Stock.objects.filter(product=OuterRef("pk"))
+                        .values("product")
+                        .annotate(total=Sum("quantidade_atual"))
+                        .values("total")[:1]
+                    ),
+                    Value(0),
+                    output_field=IntegerField(),
+                ),
+                _export_min_stock=Coalesce(
+                    Subquery(
+                        Stock.objects.filter(product=OuterRef("pk"))
+                        .values("product")
+                        .annotate(total=Sum("estoque_minimo"))
+                        .values("total")[:1]
+                    ),
+                    Value(0),
+                    output_field=IntegerField(),
+                ),
+            )
+            for product in products_with_stock:
                 categories_str = "|".join(product.categories.values_list("name", flat=True))
                 writer.writerow([
                     product.name,
                     product.description,
                     str(product.price),
                     str(product.cost_price),
-                    product.stock,
-                    product.min_stock_level,
+                    product._export_stock,
+                    product._export_min_stock,
                     categories_str,
                     product.supplier.name if product.supplier else "",
                     "sim" if product.is_public else "nao",
@@ -217,10 +241,14 @@ class ProductImportView(LoginRequiredMixin, View):
                     description=row.get("descricao", ""),
                     price=price,
                     cost_price=cost_price,
-                    stock=stock,
-                    min_stock_level=min_stock,
                     is_public=row.get("publico", "").strip().lower() in ("sim", "true", "1", "s"),
                 )
+
+                if stock > 0:
+                    from products.models import StorageLocation
+                    default_local = StorageLocation.objects.filter(user=request.user, is_active=True).first()
+                    if default_local:
+                        Stock.objects.create(product=product, local=default_local, quantidade_atual=stock, estoque_minimo=min_stock)
 
                 categories_raw = row.get("categorias", "")
                 if categories_raw:

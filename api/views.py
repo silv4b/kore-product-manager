@@ -2,6 +2,8 @@ import csv
 import io
 
 from django.db import transaction
+from django.db.models import IntegerField, OuterRef, Subquery, Sum, Value
+from django.db.models.functions import Coalesce
 from django.http import HttpResponse
 from django.utils.text import slugify
 from django_filters.rest_framework import DjangoFilterBackend
@@ -12,7 +14,7 @@ from rest_framework.response import Response
 
 from partners.models import Supplier
 from product_io.models import ExportLog, ImportLog
-from products.models import Category, Product, ProductMovement
+from products.models import Category, Product, ProductMovement, Stock, StorageLocation
 
 from .serializers import (
     CategorySerializer,
@@ -20,6 +22,8 @@ from .serializers import (
     ProductImportSerializer,
     ProductMovementSerializer,
     ProductSerializer,
+    StockSerializer,
+    StorageLocationSerializer,
     SupplierSerializer,
 )
 
@@ -56,6 +60,38 @@ class CategoryViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+
+class StorageLocationViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint para gerenciar locais de armazenamento.
+    """
+
+    serializer_class = StorageLocationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return StorageLocation.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class StockViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint para gerenciar estoques.
+    """
+
+    serializer_class = StockSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_fields = ["product", "local"]
+
+    def get_queryset(self):
+        return Stock.objects.filter(product__user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save()
 
 
 class ProductViewSet(viewsets.ModelViewSet):
@@ -96,21 +132,29 @@ class ProductViewSet(viewsets.ModelViewSet):
             movement_type = serializer.validated_data["type"]
             quantity = serializer.validated_data["quantity"]
 
-            if movement_type == "OUT" and product.stock < quantity:
+            stock = Stock.objects.filter(product=product).first()
+            if not stock:
+                default_local = StorageLocation.objects.filter(user=request.user, is_active=True).first()
+                if not default_local:
+                    return Response(
+                        {"error": "Nenhum local de armazenamento disponível."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                stock = Stock.objects.create(product=product, local=default_local)
+
+            if movement_type == "OUT" and stock.quantidade_atual < quantity:
                 return Response(
                     {"error": "Estoque insuficiente para esta saída."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            # Salva o movimento
             serializer.save(product=product)
 
-            # Atualiza o estoque do produto manualmente para garantir consistência
             if movement_type == "IN":
-                product.stock += quantity
+                stock.quantidade_atual += quantity
             else:
-                product.stock -= quantity
-            product.save()
+                stock.quantidade_atual -= quantity
+            stock.save()
 
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -144,15 +188,37 @@ class ProductViewSet(viewsets.ModelViewSet):
 
         rows = 0
         try:
-            for product in products:
+            products_with_stock = products.annotate(
+                _export_stock=Coalesce(
+                    Subquery(
+                        Stock.objects.filter(product=OuterRef("pk"))
+                        .values("product")
+                        .annotate(total=Sum("quantidade_atual"))
+                        .values("total")[:1]
+                    ),
+                    Value(0),
+                    output_field=IntegerField(),
+                ),
+                _export_min_stock=Coalesce(
+                    Subquery(
+                        Stock.objects.filter(product=OuterRef("pk"))
+                        .values("product")
+                        .annotate(total=Sum("estoque_minimo"))
+                        .values("total")[:1]
+                    ),
+                    Value(0),
+                    output_field=IntegerField(),
+                ),
+            )
+            for product in products_with_stock:
                 categories_str = "|".join(product.categories.values_list("name", flat=True))
                 writer.writerow([
                     product.name,
                     product.description,
                     str(product.price),
                     str(product.cost_price),
-                    product.stock,
-                    product.min_stock_level,
+                    product._export_stock,
+                    product._export_min_stock,
                     categories_str,
                     product.supplier.name if product.supplier else "",
                     "sim" if product.is_public else "nao",
@@ -315,10 +381,13 @@ class ProductViewSet(viewsets.ModelViewSet):
                     description=row.get("descricao", ""),
                     price=price,
                     cost_price=cost_price,
-                    stock=stock,
-                    min_stock_level=min_stock,
                     is_public=row.get("publico", "").strip().lower() in ("sim", "true", "1", "s"),
                 )
+
+                if stock > 0:
+                    default_local = StorageLocation.objects.filter(user=request.user, is_active=True).first()
+                    if default_local:
+                        Stock.objects.create(product=product, local=default_local, quantidade_atual=stock, estoque_minimo=min_stock)
 
                 categories_raw = row.get("categorias", "")
                 if categories_raw:
